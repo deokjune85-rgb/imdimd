@@ -1,7 +1,7 @@
-# app.py
+# app_consulting.py
 """
-IMD Sales Bot - Main Application
-다크 엘레강스 (McKinsey 컨설팅 스타일)
+IMD Strategic Consulting - AI Sales Bot (B2B)
+한의원 원장님 대상 AI 실장 시스템 판매
 """
 
 import streamlit as st
@@ -10,344 +10,380 @@ from conversation_manager import get_conversation_manager
 from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
 from config import (
-    APP_TITLE,
-    APP_ICON,
-    LAYOUT,
     COLOR_PRIMARY,
-    COLOR_SECONDARY,
     COLOR_BG,
     COLOR_TEXT,
     COLOR_AI_BUBBLE,
     COLOR_USER_BUBBLE,
-    COLOR_BORDER,
-    URGENCY_OPTIONS,
-    GEMINI_MODEL
+    COLOR_BORDER
 )
 
 # ============================================
-# 0. 페이지 설정
+# 페이지 설정
 # ============================================
 st.set_page_config(
-    page_title=APP_TITLE,
-    page_icon=APP_ICON,
-    layout=LAYOUT
+    page_title="IMD Strategic Consulting",
+    page_icon="💼",
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
 # ============================================
-# 1. CSS 스타일링 (다크 엘레강스)
+# CSS
 # ============================================
-def load_css():
-    """다크 엘레강스 CSS"""
-    custom_css = f"""
-    <style>
-    /* 전체 배경 */
-    .stApp {{
-        background: linear-gradient(135deg, {COLOR_BG} 0%, #1a1f35 100%);
-        font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-        color: {COLOR_TEXT};
-    }}
-    
-    /* 타이틀 */
-    h1 {{
-        color: {COLOR_PRIMARY} !important;
-        font-weight: 700;
-        text-align: center;
-        letter-spacing: -0.5px;
-        margin-bottom: 8px;
-    }}
-    
-    h2, h3 {{
-        color: {COLOR_TEXT} !important;
-        font-weight: 600;
-    }}
-    
-    /* 서브타이틀 */
-    .subtitle {{
-        text-align: center;
-        color: #94A3B8;
-        font-size: 15px;
-        margin-bottom: 32px;
-        font-weight: 400;
-    }}
-    
-    /* 채팅 컨테이너 */
-    .chat-container {{
-        max-width: 720px;
-        margin: 24px auto;
-        padding-bottom: 100px;
-    }}
-    
-    /* AI 메시지 버블 */
-    .chat-bubble-ai {{
-        background: linear-gradient(135deg, {COLOR_AI_BUBBLE} 0%, #2d3748 100%);
-        color: {COLOR_TEXT} !important;
-        padding: 20px 24px;
-        border-radius: 16px 16px 16px 4px;
-        margin-bottom: 16px;
-        width: fit-content;
-        max-width: 85%;
-        font-size: 15px;
-        line-height: 1.7;
-        border-left: 3px solid {COLOR_PRIMARY};
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        animation: fadeIn 0.6s ease;
-    }}
-    
-    /* 사용자 메시지 버블 */
-    .chat-bubble-user {{
-        background: {COLOR_USER_BUBBLE};
-        color: {COLOR_TEXT} !important;
-        padding: 16px 24px;
-        border-radius: 16px 16px 4px 16px;
-        margin-bottom: 16px;
-        margin-left: auto;
-        width: fit-content;
-        max-width: 75%;
-        font-size: 15px;
-        font-weight: 500;
-        animation: slideIn 0.4s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        border: 1px solid {COLOR_BORDER};
-    }}
-    
-    /* 애니메이션 */
-    @keyframes fadeIn {{
-        from {{ opacity: 0; transform: translateY(12px); }}
-        to {{ opacity: 1; transform: translateY(0); }}
-    }}
-    
-    @keyframes slideIn {{
-        from {{ opacity: 0; transform: translateX(12px); }}
-        to {{ opacity: 1; transform: translateX(0); }}
-    }}
-    
-    /* 추천 버튼 (모바일 최적화) */
-    .stButton > button {{
-        width: 100%;
-        background: transparent;
-        color: {COLOR_PRIMARY} !important;
-        border: 1.5px solid {COLOR_BORDER};
-        padding: 10px 12px;  /* 더 작게 */
-        font-size: 12px;  /* 폰트 작게 */
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        margin-bottom: 8px;
-        letter-spacing: 0.2px;
-        white-space: nowrap;  /* 한줄로 */
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }}
-    
-    .stButton > button:hover {{
-        background: {COLOR_AI_BUBBLE};
-        border-color: {COLOR_PRIMARY};
-        box-shadow: 0 0 16px rgba(229, 200, 154, 0.2);
-        transform: translateY(-1px);
-    }}
-    
-    /* 입력창 */
-    .stChatInput > div {{
-        background-color: {COLOR_AI_BUBBLE} !important;
-        border: 1px solid {COLOR_BORDER} !important;
-        border-radius: 12px !important;
-    }}
-    
-    input[type="text"], textarea, .stSelectbox > div > div {{
-        background-color: {COLOR_AI_BUBBLE} !important;
-        color: {COLOR_TEXT} !important;
-        border: 1px solid {COLOR_BORDER} !important;
-        border-radius: 8px !important;
-        padding: 12px !important;
-    }}
-    
-    /* 폼 스타일 */
-    .stForm {{
-        background: linear-gradient(135deg, {COLOR_AI_BUBBLE} 0%, #2d3748 100%);
-        padding: 28px;
-        border-radius: 16px;
-        border: 1px solid {COLOR_PRIMARY};
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }}
-    
-    /* 섹션 제목 */
-    .section-title {{
-        color: {COLOR_PRIMARY};
-        font-size: 18px;
-        font-weight: 600;
-        margin: 24px 0 12px 0;
-        text-align: center;
-    }}
-    
-    /* 구분선 */
-    hr {{
-        border-color: {COLOR_BORDER};
-        opacity: 0.3;
-    }}
-    </style>
-    """
-    st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown(f"""
+<style>
+/* 전체 흰색 배경 */
+.stApp {{
+    background: white !important;
+}}
 
-load_css()
+.main {{
+    background: white !important;
+}}
+
+.main .block-container {{
+    padding: 0 !important;
+    max-width: 720px !important;
+    margin: 0 auto !important;
+    background: white !important;
+}}
+
+header, .stDeployButton {{
+    display: none !important;
+}}
+
+footer {{
+    display: none !important;
+}}
+
+/* 타이틀 */
+.title-box {{
+    text-align: center;
+    padding: 20px 20px 12px 20px;
+    background: white;
+}}
+
+.title-box h1 {{
+    font-family: Arial, sans-serif !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: {COLOR_PRIMARY} !important;
+    margin: 0 !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+}}
+
+.title-box .sub {{
+    font-size: 12px;
+    color: #4B5563;
+    margin-top: 4px;
+}}
+
+/* 채팅 영역 */
+.chat-area {{
+    padding: 12px 20px 4px 20px;
+    background: white !important;
+    min-height: 150px;
+    margin-bottom: 100px;
+}}
+
+.ai-msg {{
+    background: white !important;
+    color: #1F2937 !important;
+    padding: 14px 18px !important;
+    border-radius: 18px 18px 18px 4px !important;
+    margin: 16px 0 8px 0 !important;
+    max-width: 85% !important;
+    display: block !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    border: none !important;
+    outline: none !important;
+    clear: both !important;
+}}
+
+.ai-msg::before, .ai-msg::after {{
+    content: none !important;
+    display: none !important;
+}}
+
+.user-msg {{
+    background: {COLOR_USER_BUBBLE} !important;
+    color: #1F2937 !important;
+    padding: 12px 18px !important;
+    border-radius: 18px 18px 4px 18px !important;
+    margin: 8px 0 !important;
+    max-width: 70% !important;
+    display: inline-block !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+    border: none !important;
+    outline: none !important;
+}}
+
+.msg-right {{
+    text-align: right !important;
+    clear: both !important;
+    display: block !important;
+    width: 100% !important;
+    margin-top: 16px !important;
+}}
+
+/* 입력창 */
+.stChatInput {{
+    position: fixed !important;
+    bottom: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 10px 0 !important;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.08) !important;
+    z-index: 999 !important;
+    margin: 0 !important;
+}}
+
+.stChatInput > div {{
+    max-width: 680px !important;
+    margin: 0 auto !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 24px !important;
+    background: white !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}}
+
+.stChatInput input {{
+    color: #1F2937 !important;
+    background: white !important;
+    -webkit-text-fill-color: #1F2937 !important;
+}}
+
+.stChatInput input::placeholder {{
+    color: #D1D5DB !important;
+    font-size: 15px !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #D1D5DB !important;
+}}
+
+/* 푸터 */
+.footer {{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: white !important;
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 11px;
+    color: #9CA3AF;
+    border-top: 1px solid {COLOR_BORDER};
+    z-index: 998;
+}}
+
+.footer b {{
+    color: {COLOR_TEXT};
+    font-weight: 600;
+}}
+
+/* 폼 */
+.stForm {{
+    background: white;
+    padding: 20px;
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 12px;
+    margin: 16px 20px 180px 20px;
+}}
+
+.stForm label {{
+    color: #1F2937 !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}}
+
+input, textarea, select {{
+    border: 1px solid {COLOR_BORDER} !important;
+    border-radius: 8px !important;
+    background: white !important;
+    color: #1F2937 !important;
+}}
+
+input::placeholder, textarea::placeholder {{
+    color: #D1D5DB !important;
+    opacity: 1 !important;
+}}
+
+/* 모바일 */
+@media (max-width: 768px) {{
+    .main .block-container {{
+        padding-top: 0 !important;
+    }}
+    
+    .title-box {{
+        padding: 2px 16px 2px 16px !important;
+    }}
+    
+    .title-box h1 {{
+        font-size: 20px !important;
+        line-height: 1.1 !important;
+    }}
+    
+    .chat-area {{
+        padding: 2px 16px 4px 16px !important;
+    }}
+    
+    .ai-msg {{
+        font-size: 14px !important;
+        padding: 11px 15px;
+    }}
+}}
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================
-# 2. 초기화
+# 초기화
 # ============================================
 conv_manager = get_conversation_manager()
 prompt_engine = get_prompt_engine()
 lead_handler = LeadHandler()
 
-# 첫 방문 시 웰컴 메시지
-if len(conv_manager.get_history()) == 0:
-    initial_msg = prompt_engine.generate_initial_message()
+# B2B 모드 시작 메시지
+if 'app_initialized' not in st.session_state:
+    initial_msg = """안녕하십니까, 원장님.
+
+저는 24시간 잠들지 않는 AI 상담실장입니다.
+
+환자들이 진료실에서 "비싸요, 그냥 침만 맞을게요"라고 할 때 힘빠지시죠?
+
+저는 진료 전에 환자의 마음을 열고, 지갑을 열 준비를 시킵니다.
+
+백문이 불여일견입니다. 
+지금부터 원장님은 '만성 피로 환자'가 되어주세요. 
+제가 어떻게 설득하는지 보여드리겠습니다."""
+    
     conv_manager.add_message("ai", initial_msg)
+    st.session_state.app_initialized = True
+    st.session_state.mode = 'b2b_intro'  # b2b_intro -> simulation -> b2b_closing
 
 # ============================================
-# 3. 헤더
+# 헤더
 # ============================================
-st.title("IMD AI 전략 컨설팅")
-st.markdown('<p class="subtitle">데이터 기반 비즈니스 성장 솔루션</p>', unsafe_allow_html=True)
+st.markdown("""
+<div class="title-box">
+    <h1>IMD STRATEGIC CONSULTING</h1>
+    <div class="sub">원장님의 진료 철학을 완벽하게 학습한 'AI 수석 실장'을 소개합니다</div>
+    <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)</div>
+</div>
+""", unsafe_allow_html=True)
 
 # ============================================
-# 4. 채팅 히스토리 렌더링
+# 채팅 히스토리
 # ============================================
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+chat_html = '<div class="chat-area">'
 
-for chat in conv_manager.get_history():
-    role_class = "chat-bubble-ai" if chat['role'] == 'ai' else "chat-bubble-user"
-    st.markdown(f'<div class="{role_class}">{chat["text"]}</div>', unsafe_allow_html=True)
+for msg in conv_manager.get_history():
+    if msg['role'] == 'ai':
+        chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
+    elif msg['role'] == 'user':
+        chat_html += f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ============================================
-# 5. 추천 버튼
-# ============================================
-if not conv_manager.is_ready_for_conversion():
-    st.markdown('<p class="section-title">주요 문의 사항</p>', unsafe_allow_html=True)
-    
-    buttons = conv_manager.get_recommended_buttons()
-    
-    # 항상 3칸 레이아웃 (모바일 대응)
-    cols = st.columns(3)
-    
-    for idx, button_text in enumerate(buttons[:3]):  # 최대 3개만
-        with cols[idx]:
-            if st.button(button_text, key=f"quick_{idx}"):
-                # 버튼 클릭 처리
-                conv_manager.add_message("user", button_text, metadata={"type": "button"})
-                
-                # AI 응답 생성
-                context = conv_manager.get_context()
-                history = conv_manager.get_formatted_history(for_llm=True)
-                
-                with st.spinner("분석 중..."):
-                    time.sleep(0.8)
-                    ai_response = generate_ai_response(button_text, context, history)
-                
-                conv_manager.add_message("ai", ai_response)
-                st.rerun()
+chat_html += '</div>'
+st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
-# 6. 채팅 입력창
+# 자동 CTA (시뮬레이션 완료 후)
 # ============================================
-user_input = st.chat_input("문의 사항을 입력하세요")
+chat_history = conv_manager.get_history()
+last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
 
-if user_input:
-    # 사용자 메시지 추가
-    conv_manager.add_message("user", user_input, metadata={"type": "text"})
-    
-    # AI 응답 생성
-    context = conv_manager.get_context()
-    history = conv_manager.get_formatted_history(for_llm=True)
-    
-    with st.spinner("분석 중..."):
-        time.sleep(1.0)
-        ai_response = generate_ai_response(user_input, context, history)
-    
-    conv_manager.add_message("ai", ai_response)
-    
-    # AI 응답 후 신뢰도 재확인 (폼 표시 위해)
-    conv_manager._update_trust_level()
-    
-    st.rerun()
-
-# ============================================
-# 7. 리드 전환 폼
-# ============================================
-# 디버깅용
-trust = conv_manager.get_context()['trust_level']
-is_ready = conv_manager.is_ready_for_conversion()
-stage = conv_manager.get_context()['stage']
-
-st.warning(f"🔍 DEBUG: trust={trust}, ready={is_ready}, stage={stage}")
-
-if is_ready and stage != 'complete':
+# 시뮬레이션 완료 판단 (6회 이상 대화 + AI 답변으로 끝)
+if len(chat_history) >= 6 and last_msg_is_ai and conv_manager.get_context()['stage'] != 'complete':
     st.markdown("---")
-    st.markdown('<p class="section-title">AI 아키텍처 설계 제안서 신청</p>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#94A3B8; font-size:14px;'>담당 컨설턴트가 24시간 내 연락드립니다</p>", unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">이 시스템을 한의원에 도입하시겠습니까?</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다</p>",
+        unsafe_allow_html=True
+    )
     
-    with st.form("lead_capture_form"):
+    with st.form("consulting_form"):
         col1, col2 = st.columns(2)
         with col1:
-            name = st.text_input("성함 / 직함", placeholder="홍길동 / 대표이사")
+            clinic_name = st.text_input("병원명", placeholder="서울한의원")
         with col2:
-            contact = st.text_input("연락처", placeholder="010-1234-5678")
+            director_name = st.text_input("원장님 성함", placeholder="홍길동")
         
-        company = st.text_input("기업명 / 병원명", placeholder="예: (주)ABC컴퍼니")
-        urgency = st.selectbox("도입 희망 시기", URGENCY_OPTIONS)
+        contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
         
-        submitted = st.form_submit_button("제안서 신청", use_container_width=True)
+        submitted = st.form_submit_button("무료 도입 견적서 받기", use_container_width=True)
         
         if submitted:
-            if not name or not contact:
-                st.error("필수 정보를 입력해주세요.")
+            if not clinic_name or not director_name or not contact:
+                st.error("필수 정보를 모두 입력해주세요.")
             else:
-                # 리드 저장
                 lead_data = {
-                    'user_type': conv_manager.get_context().get('user_type', 'Unknown'),
-                    'stage': 'Lead Converted',
-                    'name': name,
+                    'name': director_name,
                     'contact': contact,
-                    'company': company,
-                    'urgency': urgency,
-                    'source': 'IMD_AI_Consultant'
+                    'symptom': f"병원명: {clinic_name}",
+                    'preferred_date': '즉시 상담 희망',
+                    'chat_summary': conv_manager.get_summary(),
+                    'source': 'IMD_Strategic_Consulting',
+                    'type': 'Oriental_Clinic'
                 }
                 
                 success, message = lead_handler.save_lead(lead_data)
                 
                 if success:
-                    # 완료 메시지
                     completion_msg = f"""
-### 신청이 완료되었습니다
+견적서 발송이 완료되었습니다.
 
-**{name}님**, 감사합니다.
+{director_name} 원장님, 감사합니다.
 
-담당 컨설턴트가 **24시간 내**로 아래 연락처로 맞춤 분석 리포트와 함께 연락드립니다.
+{clinic_name}에 최적화된 AI 실장 시스템 견적서를 
+{contact}로 24시간 내 전송해드리겠습니다.
 
-**연락처**: {contact}  
-**희망 시기**: {urgency}
+포함 내용:
+- 맞춤형 시스템 구축 비용
+- 월 운영비 및 유지보수
+- 지역 독점권 계약 조건
+- ROI 예상 시뮬레이션
 
----
-
-**다음 단계:**
-1. 24시간 내: 1차 전화 상담
-2. 48시간 내: 맞춤 AI 설계 제안서 발송
-3. 7일 내: 실제 데모 시연 (선택)
+담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
 """
                     conv_manager.add_message("ai", completion_msg)
                     conv_manager.update_stage('complete')
                     
-                    st.success("신청이 완료되었습니다.")
+                    st.success("견적서 신청이 완료되었습니다!")
                     time.sleep(1)
                     st.rerun()
                 else:
                     st.error(f"오류: {message}")
 
 # ============================================
-# 8. 완료 후 액션
+# 입력창
+# ============================================
+user_input = st.chat_input("원장님의 생각을 말씀해주세요")
+
+if user_input:
+    conv_manager.add_message("user", user_input, metadata={"type": "text"})
+    
+    context = conv_manager.get_context()
+    history = conv_manager.get_formatted_history(for_llm=True)
+    
+    time.sleep(1.0)
+    ai_response = generate_ai_response(user_input, context, history)
+    
+    conv_manager.add_message("ai", ai_response)
+    st.rerun()
+
+# ============================================
+# 완료 후
 # ============================================
 if conv_manager.get_context()['stage'] == 'complete':
-    st.markdown("---")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -356,52 +392,16 @@ if conv_manager.get_context()['stage'] == 'complete':
             st.rerun()
     
     with col2:
-        if st.button("대화 요약 보기", use_container_width=True):
+        if st.button("상담 내역 보기", use_container_width=True):
             with st.expander("상담 요약", expanded=True):
                 st.markdown(conv_manager.get_summary())
 
 # ============================================
-# 9. 사이드바 (간소화)
+# 푸터
 # ============================================
-with st.sidebar:
-    st.markdown(f"<h3 style='color:{COLOR_PRIMARY};'>IMD</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#94A3B8; font-size:12px;'>AI Architecture Group</p>", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Gemini 상태 확인 (중요!)
-    st.markdown("### 🔧 시스템 상태")
-    if prompt_engine.model:
-        st.success("✅ AI 연결됨")
-        st.caption(f"모델: {GEMINI_MODEL}")
-    else:
-        st.error("❌ AI 미연결")
-        st.caption("Secrets 확인 필요")
-    
-    # 진행도
-    trust = conv_manager.get_context()['trust_level']
-    st.metric("상담 진행도", f"{trust}%")
-    
-    # 개발자 모드 (간소화)
-    if st.checkbox("시스템 정보"):
-        st.json({
-            "messages": len(conv_manager.get_history()),
-            "stage": conv_manager.get_context()['stage'],
-            "user_type": conv_manager.get_context().get('user_type', 'Unknown'),
-            "retry_count": prompt_engine.retry_count
-        })
-
-# ============================================
-# 10. 푸터
-# ============================================
-st.markdown("---")
-st.markdown(
-    f"""
-    <div style='text-align:center; color:#64748B; font-size:11px; padding: 20px 0;'>
-        <b style='color:{COLOR_PRIMARY};'>IMD Architecture Group</b><br>
-        Enterprise AI Solutions | Powered by Gemini 2.0<br>
-        © 2024 Reset Security. All rights reserved.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="footer">
+    <b>IMD Strategic Consulting</b><br>
+    한의원 전용 AI 매출 엔진 | 전국 200개 한의원 도입 완료
+</div>
+""", unsafe_allow_html=True)
