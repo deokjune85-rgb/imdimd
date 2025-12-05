@@ -121,26 +121,29 @@ def load_css():
         to {{ opacity: 1; transform: translateX(0); }}
     }}
     
-    /* 추천 버튼 */
+    /* 추천 버튼 (모바일 최적화) */
     .stButton > button {{
         width: 100%;
         background: transparent;
         color: {COLOR_PRIMARY} !important;
         border: 1.5px solid {COLOR_BORDER};
-        padding: 14px 20px;
-        font-size: 14px;
-        border-radius: 12px;
+        padding: 10px 12px;  /* 더 작게 */
+        font-size: 12px;  /* 폰트 작게 */
+        border-radius: 8px;
         font-weight: 500;
         transition: all 0.3s ease;
         margin-bottom: 8px;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.2px;
+        white-space: nowrap;  /* 한줄로 */
+        overflow: hidden;
+        text-overflow: ellipsis;
     }}
     
     .stButton > button:hover {{
         background: {COLOR_AI_BUBBLE};
         border-color: {COLOR_PRIMARY};
-        box-shadow: 0 0 16px rgba(212, 175, 55, 0.2);
-        transform: translateY(-2px);
+        box-shadow: 0 0 16px rgba(229, 200, 154, 0.2);
+        transform: translateY(-1px);
     }}
     
     /* 입력창 */
@@ -224,13 +227,10 @@ if not conv_manager.is_ready_for_conversion():
     
     buttons = conv_manager.get_recommended_buttons()
     
-    # 버튼 레이아웃
-    if len(buttons) == 3:
-        cols = st.columns(3)
-    else:
-        cols = st.columns(len(buttons))
+    # 항상 3칸 레이아웃 (모바일 대응)
+    cols = st.columns(3)
     
-    for idx, button_text in enumerate(buttons):
+    for idx, button_text in enumerate(buttons[:3]):  # 최대 3개만
         with cols[idx]:
             if st.button(button_text, key=f"quick_{idx}"):
                 # 버튼 클릭 처리
