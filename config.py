@@ -50,9 +50,9 @@ QUICK_REPLIES = {
 # ============================================
 # 3. Gemini API 설정
 # ============================================
-GEMINI_MODEL = "gemini-2.0-flash-thinking-exp-1219"
-GEMINI_TEMPERATURE = 0.7  # 창의성 낮춤 (0.85 → 0.7)
-GEMINI_MAX_TOKENS = 800   # 더 간결하게 (1000 → 800)
+GEMINI_MODEL = "gemini-1.5-flash"  # 가장 안정적
+GEMINI_TEMPERATURE = 0.7
+GEMINI_MAX_TOKENS = 800
 
 # ============================================
 # 4. System Prompt (McKinsey 컨설턴트 페르소나)
