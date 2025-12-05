@@ -169,12 +169,15 @@ class ConversationManager:
         if context.get('urgency') == 'high':
             return True
         
-        # 조건 2: 신뢰도 50 이상 + 업종 파악됨 + 인터랙션 5회 이상
-        trust_ok = context['trust_level'] >= 50
-        identified = context['user_type'] is not None
-        engaged = st.session_state.interaction_count >= 5
+        # 조건 2: 5회 이상 대화하면 무조건 폼 표시 (trust_level 50+)
+        if context['trust_level'] >= 50:
+            return True
         
-        return trust_ok and identified and engaged
+        # 조건 3: 4회 대화 + 업종 파악됨
+        trust_ok = context['trust_level'] >= 40
+        identified = context['user_type'] is not None
+        
+        return trust_ok and identified
     
     def get_recommended_buttons(self) -> List[str]:
         """
