@@ -51,10 +51,7 @@ class PromptEngine:
                 }
             )
             
-            # 초기화 성공 표시 (한번만)
-            if 'gemini_initialized' not in st.session_state:
-                st.success(f"✅ AI 컨설턴트 준비 완료")
-                st.session_state.gemini_initialized = True
+            # 초기화 성공 (로그만, 화면 표시 X)
             
         except Exception as e:
             st.error(f"❌ 시스템 초기화 실패: {str(e)}")
