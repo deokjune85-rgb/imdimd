@@ -153,7 +153,12 @@ class ConversationManager:
         대화 진행도에 따라 신뢰도 업데이트
         신뢰도 = 인터랙션 수 * 10 (최대 100)
         """
-        trust = min(st.session_state.interaction_count * 10, 100)
+        # AI 응답 포함해서 총 메시지 수로 계산
+        total_messages = len(st.session_state.chat_history)
+        # 사용자 메시지만 카운트 (AI 제외)
+        user_messages = sum(1 for msg in st.session_state.chat_history if msg['role'] == 'user')
+        
+        trust = min(user_messages * 10, 100)
         st.session_state.user_context['trust_level'] = trust
     
     def is_ready_for_conversion(self) -> bool:
@@ -163,6 +168,9 @@ class ConversationManager:
         Returns:
             전환 준비 여부
         """
+        # 신뢰도를 매번 재계산
+        self._update_trust_level()
+        
         context = st.session_state.user_context
         
         # 조건 1: 긴급도가 high면 즉시 전환
