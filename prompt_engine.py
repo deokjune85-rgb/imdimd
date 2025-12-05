@@ -1,7 +1,7 @@
 # prompt_engine.py
 """
 IMD Sales Bot - AI Response Generation
-Gemini API 연동 및 동적 프롬프트 생성
+Gemini API 전용 (디버깅 강화)
 """
 
 import streamlit as st
@@ -16,7 +16,7 @@ from config import (
 )
 
 class PromptEngine:
-    """AI 응답 생성 엔진"""
+    """AI 응답 생성 엔진 (Gemini 전용)"""
     
     def __init__(self):
         """Gemini API 초기화"""
@@ -26,11 +26,24 @@ class PromptEngine:
     def _init_gemini(self):
         """Gemini API 설정"""
         try:
-            api_key = st.secrets.get("GEMINI_API_KEY")
-            if not api_key:
-                st.error("❌ GEMINI_API_KEY가 설정되지 않았습니다.")
+            # Secrets 확인
+            if "GEMINI_API_KEY" not in st.secrets:
+                st.error("❌ st.secrets에 'GEMINI_API_KEY'가 없습니다!")
+                st.info("Streamlit Cloud > Settings > Secrets에 추가하세요.")
+                self.model = None
                 return
             
+            api_key = st.secrets["GEMINI_API_KEY"]
+            
+            if not api_key or api_key == "":
+                st.error("❌ GEMINI_API_KEY가 비어있습니다!")
+                self.model = None
+                return
+            
+            # API 키 유효성 표시 (처음 3글자만)
+            st.success(f"✅ Gemini API 키 감지됨: {api_key[:8]}...")
+            
+            # Gemini 설정
             genai.configure(api_key=api_key)
             self.model = genai.GenerativeModel(
                 model_name=GEMINI_MODEL,
@@ -39,8 +52,13 @@ class PromptEngine:
                     "max_output_tokens": GEMINI_MAX_TOKENS,
                 }
             )
+            
+            st.success(f"✅ Gemini 모델 초기화 완료: {GEMINI_MODEL}")
+            
         except Exception as e:
             st.error(f"❌ Gemini API 초기화 실패: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc(), language="python")
             self.model = None
     
     def generate_response(
@@ -60,24 +78,53 @@ class PromptEngine:
         Returns:
             AI 응답 텍스트
         """
+        # 디버그 정보
+        st.info(f"🔧 DEBUG: 모델 연결 상태 = {'연결됨' if self.model else '미연결'}")
+        
         if not self.model:
+            st.warning("⚠️ Gemini 미연결 - Fallback 응답 사용")
             return self._fallback_response(user_input, context)
         
         try:
+            st.info("🔧 DEBUG: 프롬프트 생성 중...")
+            
             # 동적 System Prompt 생성
             full_prompt = self._build_prompt(user_input, context, conversation_history)
+            
+            st.info(f"🔧 DEBUG: 프롬프트 길이 = {len(full_prompt)} 글자")
+            st.info("🔧 DEBUG: Gemini API 호출 시작...")
             
             # Gemini API 호출
             response = self.model.generate_content(full_prompt)
             
+            st.success("🔧 DEBUG: Gemini 응답 받음!")
+            st.info(f"🔧 DEBUG: 원본 응답 길이 = {len(response.text)} 글자")
+            
             # 응답 후처리
-            ai_response = response.text.strip()
-            ai_response = self._post_process_response(ai_response, context)
+            ai_response = self._post_process_response(response.text.strip(), context)
+            
+            st.success(f"🔧 DEBUG: 최종 응답 길이 = {len(ai_response)} 글자")
+            
+            # 응답 미리보기 (처음 100자)
+            st.code(ai_response[:100] + "...", language="text")
             
             return ai_response
             
         except Exception as e:
-            st.warning(f"⚠️ AI 응답 생성 실패: {str(e)}")
+            st.error(f"❌ AI 응답 생성 실패: {str(e)}")
+            
+            # 상세 에러 로그
+            import traceback
+            error_detail = traceback.format_exc()
+            st.code(error_detail, language="python")
+            
+            # 에러 타입별 안내
+            error_str = str(e).lower()
+            if "quota" in error_str or "rate" in error_str:
+                st.warning("💡 API 할당량 초과! 잠시 후 다시 시도하세요.")
+            elif "invalid" in error_str:
+                st.warning("💡 API 키가 유효하지 않습니다. Secrets 확인하세요.")
+            
             return self._fallback_response(user_input, context)
     
     def _build_prompt(
@@ -174,7 +221,8 @@ class PromptEngine:
         response = response.replace('\n\n\n', '\n\n')
         
         # 2. 마크다운 굵기 처리 (** → <b>)
-        response = response.replace('**', '<b>', 1).replace('**', '</b>', 1)
+        import re
+        response = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', response)
         
         # 3. 너무 길면 자르기 (500자 제한)
         if len(response) > 500:
