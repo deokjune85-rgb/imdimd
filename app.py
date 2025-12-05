@@ -274,7 +274,14 @@ if user_input:
 # ============================================
 # 7. 리드 전환 폼
 # ============================================
-if conv_manager.is_ready_for_conversion() and conv_manager.get_context()['stage'] != 'complete':
+# 디버깅용
+trust = conv_manager.get_context()['trust_level']
+is_ready = conv_manager.is_ready_for_conversion()
+stage = conv_manager.get_context()['stage']
+
+st.warning(f"🔍 DEBUG: trust={trust}, ready={is_ready}, stage={stage}")
+
+if is_ready and stage != 'complete':
     st.markdown("---")
     st.markdown('<p class="section-title">AI 아키텍처 설계 제안서 신청</p>', unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:#94A3B8; font-size:14px;'>담당 컨설턴트가 24시간 내 연락드립니다</p>", unsafe_allow_html=True)
