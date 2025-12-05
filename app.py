@@ -255,17 +255,32 @@ if 'app_initialized' not in st.session_state:
 
 저는 24시간 잠들지 않는 AI 상담실장입니다.
 
-환자들이 진료실에서 "비싸요, 그냥 침만 맞을게요"라고 할 때 힘빠지시죠?
+진료실에서 이런 말, 자주 들으시죠?
 
-저는 진료 전에 환자의 마음을 열고, 지갑을 열 준비를 시킵니다.
+"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요."
 
-백문이 불여일견입니다. 
-지금부터 원장님은 '만성 피로 환자'가 되어주세요. 
-제가 어떻게 설득하는지 보여드리겠습니다."""
+그 순간, 진료 동선도 끊기고, 원장님 마음도 같이 꺾이실 겁니다.
+
+저는 그 순간 전에, 환자의 마음을 열고, 지갑을 열 준비를 시키는 역할을 합니다.
+
+백문이 불여일견입니다.
+
+지금부터 원장님은 '만성 피로 환자' 역할을 한 번 해봐 주십시오.
+제가 어떻게 상담하고, 어떻게 설득하는지 보여드리겠습니다.
+
+편한 말투로 말씀해 주세요.
+
+예를 들면:
+- "아 놔, 요즘 진짜 너무 피곤해요"
+- "자고 일어나도 피곤이 안 풀려요"
+- "커피 안 마시면 머리가 안 돌아가요"
+
+아무 말이나 편하게 한번 던져보시면 됩니다."""
     
     conv_manager.add_message("ai", initial_msg)
     st.session_state.app_initialized = True
-    st.session_state.mode = 'b2b_intro'  # b2b_intro -> simulation -> b2b_closing
+    st.session_state.mode = 'simulation'  # simulation -> closing
+    st.session_state.conversation_count = 0
 
 # ============================================
 # 헤더
@@ -371,14 +386,44 @@ user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 if user_input:
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
     
+    # 대화 카운트 증가
+    if 'conversation_count' not in st.session_state:
+        st.session_state.conversation_count = 0
+    st.session_state.conversation_count += 1
+    
     context = conv_manager.get_context()
     history = conv_manager.get_formatted_history(for_llm=True)
     
-    time.sleep(1.0)
-    ai_response = generate_ai_response(user_input, context, history)
-    
-    conv_manager.add_message("ai", ai_response)
-    st.rerun()
+    # 3회 이상 대화 시 클로징 모드로 전환
+    if st.session_state.conversation_count >= 3 and st.session_state.mode == 'simulation':
+        st.session_state.mode = 'closing'
+        closing_msg = """원장님, 방금 보신 대화가 실제 환자에게 제가 자동으로 하는 상담 흐름입니다.
+
+정리해보면, 저는:
+1. 환자의 표현을 그대로 받아주고 공감하고,
+2. 증상을 기간·강도·수면·통증 부위로 쪼개서 듣고,
+3. 그 정보를 바탕으로 원장님 병원의 진료 철학에 맞게 설명하고,
+4. 마지막에는 자연스럽게 진맥 → 한약/침/추나 → 생활 교정으로 이어지게 설계됩니다.
+
+이제 상상해보십시오.
+
+이 AI를 원장님 병원 홈페이지에 24시간 붙여놓는다면?
+
+밤 11시, 퇴근하고 누워서 검색하는 직장인이 "만성 피로 한약"을 물으면, 제가 알아서 상담하고 예약까지 받아둡니다.
+
+실제 적용 사례로 말씀드리면:
+서울 A한의원 (월 신규 환자 약 80명 수준)
+- AI 도입 후 2개월 동안 온라인 문의 수 약 40% 증가
+- 예약 전환율 18% → 22.5% (약 25% 상승)
+
+폭발적인 매출 신화가 아니라, 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 조금씩 대신 떠받쳐주는 결과입니다."""
+        conv_manager.add_message("ai", closing_msg)
+        st.rerun()
+    else:
+        time.sleep(1.0)
+        ai_response = generate_ai_response(user_input, context, history)
+        conv_manager.add_message("ai", ai_response)
+        st.rerun()
 
 # ============================================
 # 완료 후
