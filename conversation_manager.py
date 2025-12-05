@@ -165,10 +165,14 @@ class ConversationManager:
         """
         context = st.session_state.user_context
         
-        # 조건: 신뢰도 40 이상 + (업종 파악됨 or 인터랙션 5회 이상)
-        trust_ok = context['trust_level'] >= 40
+        # 조건 1: 긴급도가 high면 즉시 전환
+        if context.get('urgency') == 'high':
+            return True
+        
+        # 조건 2: 신뢰도 30 이상 + (업종 파악됨 or 인터랙션 3회 이상)
+        trust_ok = context['trust_level'] >= 30  # 40 → 30으로 완화
         identified = context['user_type'] is not None
-        engaged = st.session_state.interaction_count >= 5
+        engaged = st.session_state.interaction_count >= 3  # 5 → 3으로 완화
         
         return trust_ok and (identified or engaged)
     
