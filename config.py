@@ -48,7 +48,7 @@ QUICK_REPLIES = {
 # ============================================
 # 3. Gemini API 설정
 # ============================================
-GEMINI_MODEL = "gemini-2.0-flash-exp"
+GEMINI_MODEL = "gemini-2.0-flash"
 GEMINI_TEMPERATURE = 0.85  # 창의적이지만 일관성 유지
 GEMINI_MAX_TOKENS = 1000
 
