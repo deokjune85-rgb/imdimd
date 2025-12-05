@@ -1,421 +1,254 @@
-# prompt_engine.py
+# conversation_manager.py
 """
-IMD Sales Bot - AI Response Generation
-Multi-LLM 지원 (Gemini, Groq, OpenRouter)
+IMD Sales Bot - Conversation State Management
+대화 히스토리, 컨텍스트, 사용자 의도 관리
 """
 
 import streamlit as st
-from typing import Dict, Optional
-from config import (
-    SYSTEM_PROMPT,
-    GEMINI_MODEL,
-    GEMINI_TEMPERATURE,
-    GEMINI_MAX_TOKENS,
-    CASE_STUDIES
-)
+from typing import Dict, List, Optional
+from datetime import datetime
+import re
 
-# LLM 선택에 따른 import
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except:
-    GEMINI_AVAILABLE = False
-
-try:
-    from groq import Groq
-    GROQ_AVAILABLE = True
-except:
-    GROQ_AVAILABLE = False
-
-try:
-    import requests
-    OPENROUTER_AVAILABLE = True
-except:
-    OPENROUTER_AVAILABLE = False
-
-class PromptEngine:
-    """AI 응답 생성 엔진 (Gemini, Groq, OpenRouter 지원)"""
+class ConversationManager:
+    """대화 상태 및 컨텍스트 관리 클래스"""
     
     def __init__(self):
-        """LLM API 초기화"""
-        self.model = None
-        self.llm_type = None  # 'gemini', 'groq', 'openrouter'
-        self._init_llm()
-    
-    def _init_llm(self):
-        """사용 가능한 LLM 자동 감지 및 초기화"""
+        """세션 상태 초기화"""
+        if 'chat_history' not in st.session_state:
+            st.session_state.chat_history = []
         
-        # 0순위: OpenRouter (가장 유연함, 여러 모델)
-        if "OPENROUTER_API_KEY" in st.secrets and OPENROUTER_AVAILABLE:
-            try:
-                self.api_key = st.secrets["OPENROUTER_API_KEY"]
-                # 모델 선택 (Secrets에서 지정 가능)
-                self.model_name = st.secrets.get(
-                    "OPENROUTER_MODEL", 
-                    "google/gemini-2.0-flash-exp:free"  # 기본값: Gemini 무료
-                )
-                self.model = "openrouter"  # 플래그
-                self.llm_type = "openrouter"
-                st.success(f"✅ OpenRouter 연결 완료 (모델: {self.model_name})")
-                return
-            except Exception as e:
-                st.warning(f"OpenRouter 초기화 실패: {e}")
-        
-        # 1순위: Groq (가장 빠르고 무료)
-        if "GROQ_API_KEY" in st.secrets and GROQ_AVAILABLE:
-            try:
-                api_key = st.secrets["GROQ_API_KEY"]
-                self.model = Groq(api_key=api_key)
-                self.llm_type = "groq"
-                st.success(f"✅ Groq API 연결 완료 (초고속 모드)")
-                return
-            except Exception as e:
-                st.warning(f"Groq 초기화 실패: {e}")
-        
-        # 2순위: Gemini
-        if "GEMINI_API_KEY" in st.secrets and GEMINI_AVAILABLE:
-            try:
-                api_key = st.secrets["GEMINI_API_KEY"]
-                genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel(
-                    model_name=GEMINI_MODEL,
-                    generation_config={
-                        "temperature": GEMINI_TEMPERATURE,
-                        "max_output_tokens": GEMINI_MAX_TOKENS,
-                    }
-                )
-                self.llm_type = "gemini"
-                st.success(f"✅ Gemini API 연결 완료")
-                return
-            except Exception as e:
-                st.warning(f"Gemini 초기화 실패: {e}")
-        
-        # 모두 실패
-        st.error("❌ 사용 가능한 LLM API가 없습니다!")
-        st.info("""
-        **Secrets에 다음 중 하나를 추가하세요:**
-        
-        1. OpenRouter (추천, 다양한 모델):
-           ```
-           OPENROUTER_API_KEY = "sk-or-v1-..."
-           OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free"
-           ```
-           발급: https://openrouter.ai/keys
-        
-        2. Groq (빠름, 무료):
-           ```
-           GROQ_API_KEY = "gsk_..."
-           ```
-           발급: https://console.groq.com/keys
-        
-        3. Gemini:
-           ```
-           GEMINI_API_KEY = "AIza..."
-           ```
-           발급: https://aistudio.google.com/apikey
-        """)
-        self.model = None
-        self.llm_type = None
-    
-    def generate_response(
-        self,
-        user_input: str,
-        context: Dict,
-        conversation_history: str
-    ) -> str:
-        """
-        사용자 입력에 대한 AI 응답 생성
-        
-        Args:
-            user_input: 사용자 메시지
-            context: 대화 컨텍스트 (user_type, pain_point 등)
-            conversation_history: 최근 대화 히스토리
-        
-        Returns:
-            AI 응답 텍스트
-        """
-        if not self.model:
-            st.warning("⚠️ LLM 미연결 - Fallback 응답 사용")
-            return self._fallback_response(user_input, context)
-        
-        try:
-            # 디버그: LLM 타입 확인
-            st.info(f"🔧 DEBUG: LLM 타입 = {self.llm_type}")
-            
-            # 동적 System Prompt 생성
-            full_prompt = self._build_prompt(user_input, context, conversation_history)
-            st.info(f"🔧 DEBUG: 프롬프트 길이 = {len(full_prompt)} 글자")
-            
-            # LLM별 호출 방식
-            if self.llm_type == "openrouter":
-                st.info("🔧 DEBUG: OpenRouter 호출 중...")
-                response = self._call_openrouter(full_prompt)
-            elif self.llm_type == "groq":
-                st.info("🔧 DEBUG: Groq 호출 중...")
-                response = self._call_groq(full_prompt)
-            elif self.llm_type == "gemini":
-                st.info("🔧 DEBUG: Gemini 호출 중...")
-                response = self._call_gemini(full_prompt)
-            else:
-                st.error(f"🔧 DEBUG: 알 수 없는 LLM 타입: {self.llm_type}")
-                return self._fallback_response(user_input, context)
-            
-            st.success(f"🔧 DEBUG: AI 응답 받음 (길이: {len(response)} 글자)")
-            
-            # 응답 후처리
-            ai_response = self._post_process_response(response, context)
-            st.success(f"🔧 DEBUG: 후처리 완료 (최종 길이: {len(ai_response)} 글자)")
-            
-            return ai_response
-            
-        except Exception as e:
-            import traceback
-            error_detail = traceback.format_exc()
-            st.error(f"⚠️ AI 응답 생성 실패: {str(e)}")
-            st.code(error_detail, language="python")
-            return self._fallback_response(user_input, context)
-    
-    def _call_openrouter(self, prompt: str) -> str:
-        """OpenRouter API 호출"""
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "HTTP-Referer": "https://imd-sales-bot.streamlit.app",  # 선택사항
-                "X-Title": "IMD Sales Bot",  # 선택사항
-            },
-            json={
-                "model": self.model_name,
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.85,
-                "max_tokens": 1000,
+        if 'user_context' not in st.session_state:
+            st.session_state.user_context = {
+                'user_type': None,        # 병원/쇼핑몰
+                'pain_point': None,       # 주요 고민
+                'urgency': None,          # 긴급도
+                'budget_sense': None,     # 가격 민감도
+                'trust_level': 0,         # 신뢰도 (0-100)
+                'stage': 'initial',       # 대화 단계
+                'keywords': [],           # 언급된 키워드들
+                'objections': [],         # 반박/우려 사항
             }
-        )
         
-        if response.status_code != 200:
-            raise Exception(f"OpenRouter API 오류: {response.status_code} - {response.text}")
-        
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
+        if 'interaction_count' not in st.session_state:
+            st.session_state.interaction_count = 0
     
-    def _call_groq(self, prompt: str) -> str:
-        """Groq API 호출"""
-        chat_completion = self.model.chat.completions.create(
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            model="llama-3.1-70b-versatile",  # 가장 성능 좋은 무료 모델
-            temperature=0.85,
-            max_tokens=1000,
-        )
-        return chat_completion.choices[0].message.content
-    
-    def _call_gemini(self, prompt: str) -> str:
-        """Gemini API 호출"""
-        response = self.model.generate_content(prompt)
-        return response.text
-    
-    def _build_prompt(
-        self,
-        user_input: str,
-        context: Dict,
-        conversation_history: str
-    ) -> str:
+    def add_message(self, role: str, text: str, metadata: Optional[Dict] = None):
         """
-        최종 프롬프트 조립
+        대화 히스토리에 메시지 추가
         
         Args:
-            user_input: 사용자 메시지
-            context: 컨텍스트
-            conversation_history: 대화 히스토리
-        
-        Returns:
-            완성된 프롬프트
+            role: 'ai' or 'user'
+            text: 메시지 내용
+            metadata: 추가 정보 (버튼 클릭, 의도 등)
         """
-        # System Prompt에 컨텍스트 주입
-        system_prompt = SYSTEM_PROMPT.format(
-            user_type=context.get('user_type') or '미파악',
-            pain_point=context.get('pain_point') or '미파악',
-            stage=context.get('stage', 'initial'),
-            trust_level=context.get('trust_level', 0)
-        )
-        
-        # 반박 사항 대응 전략 추가
-        if context.get('objections'):
-            objection_guide = self._get_objection_handling(context['objections'])
-            system_prompt += f"\n\n## 현재 고객 우려사항\n{objection_guide}"
-        
-        # 사례 연구 추가 (업종별)
-        if context.get('user_type') in CASE_STUDIES:
-            case = CASE_STUDIES[context['user_type']]
-            system_prompt += f"\n\n## 제시할 수 있는 실제 사례\n- {case['title']}: {case['result']}\n- 고객 후기: \"{case['quote']}\""
-        
-        # 최종 프롬프트 조립
-        full_prompt = f"""{system_prompt}
-
----
-
-## 최근 대화 내역
-{conversation_history}
-
----
-
-## 고객의 최신 입력
-고객: {user_input}
-
----
-
-**위 맥락을 고려하여, 지금 즉시 응답하세요.**
-응답은 3-5문장 이내로 간결하게 작성하세요.
-핵심 메시지 하나에 집중하세요.
-"""
-        return full_prompt
-    
-    def _get_objection_handling(self, objections: list) -> str:
-        """
-        반박 사항별 대응 전략
-        
-        Args:
-            objections: 우려 사항 리스트
-        
-        Returns:
-            대응 가이드
-        """
-        strategies = {
-            'skeptical': "→ 실제 사례와 구체적 수치로 증명하세요. '지금 저와 대화하는 것처럼...' 프레임 사용",
-            'complexity': "→ '설치 3일, 교육 1시간이면 끝' 같이 구체적 일정 제시",
-            'price_sensitive': "→ 가격이 아닌 ROI로 전환. '월 200만원 투자로 월 1000만원 추가 매출' 식으로 제시"
+        message = {
+            'role': role,
+            'text': text,
+            'timestamp': datetime.now().isoformat(),
+            'metadata': metadata or {}
         }
+        st.session_state.chat_history.append(message)
         
-        guide = []
-        for obj in objections:
-            if obj in strategies:
-                guide.append(strategies[obj])
-        
-        return "\n".join(guide) if guide else "고객의 우려를 공감하고 구체적 해결책 제시"
+        # 인터랙션 카운트 증가 (신뢰도 계산용)
+        if role == 'user':
+            st.session_state.interaction_count += 1
+            self._update_trust_level()
+            self._extract_context(text)
     
-    def _post_process_response(self, response: str, context: Dict) -> str:
+    def get_history(self, limit: Optional[int] = None) -> List[Dict]:
         """
-        AI 응답 후처리 (포맷팅, 안전장치)
+        대화 히스토리 조회
         
         Args:
-            response: 원본 응답
-            context: 컨텍스트
+            limit: 최근 N개만 조회 (None이면 전체)
         
         Returns:
-            처리된 응답
+            메시지 리스트
         """
-        # 1. 과도한 줄바꿈 제거
-        response = response.replace('\n\n\n', '\n\n')
-        
-        # 2. 마크다운 굵기 처리 (** → <b>)
-        response = response.replace('**', '<b>', 1).replace('**', '</b>', 1)
-        
-        # 3. 너무 길면 자르기 (500자 제한)
-        if len(response) > 500:
-            response = response[:480] + "...\n\n계속 들어보시겠어요?"
-        
-        # 4. 금지 단어 필터링
-        forbidden = ['LLM', 'RAG', 'API', '머신러닝', '딥러닝']
-        for word in forbidden:
-            if word in response:
-                response = response.replace(word, 'AI 기술')
-        
-        # 5. CTA 자동 추가 (전환 타이밍)
-        if context.get('trust_level', 0) >= 60 and '무료' not in response:
-            response += "\n\n💡 지금 무료 설계도라도 받아보시는 건 어떨까요?"
-        
-        return response
+        history = st.session_state.chat_history
+        if limit:
+            return history[-limit:]
+        return history
     
-    def _fallback_response(self, user_input: str, context: Dict) -> str:
+    def get_context(self) -> Dict:
         """
-        API 실패 시 폴백 응답 (규칙 기반)
+        현재 대화 컨텍스트 반환 (Gemini에 전달용)
+        
+        Returns:
+            컨텍스트 딕셔너리
+        """
+        return st.session_state.user_context.copy()
+    
+    def get_formatted_history(self, for_llm: bool = True) -> str:
+        """
+        LLM에 전달할 포맷의 대화 히스토리
         
         Args:
-            user_input: 사용자 입력
-            context: 컨텍스트
+            for_llm: LLM용 포맷 여부
         
         Returns:
-            폴백 응답
+            포맷팅된 대화 내역
         """
-        user_lower = user_input.lower()
+        history = self.get_history(limit=10)  # 최근 10개만 (토큰 절약)
         
-        # 키워드 기반 단순 응답
-        if any(word in user_lower for word in ['가격', '비용', '얼마']):
-            return """대표님, 솔직히 말씀드리면 '가격'보다 중요한 게 있습니다.
-            
-지금 홈페이지 방문자 100명 중 몇 명이 구매/예약하시나요?
-만약 2%라면, AI로 3%만 올려도 월매출이 50% 늘어납니다.
-
-투자 대비 수익(ROI)을 먼저 계산해보시겠어요?"""
-        
-        elif any(word in user_lower for word in ['효과', '진짜', '정말']):
-            case = CASE_STUDIES.get(context.get('user_type', 'hospital'))
-            return f"""당연히 의심스러우실 겁니다. 근데 대표님, 지금 저와 대화하시면서 느끼셨나요?
-
-제가 사람처럼 대답한다는 걸?
-
-실제로 <b>{case['title']}</b>는 도입 후 <b>{case['result']}</b> 달성했습니다.
-
-"{case['quote']}"
-
-실제 사례를 더 보시겠어요?"""
-        
-        elif any(word in user_lower for word in ['시간', '바쁘', '나중']):
-            return """대표님, 딱 2분만 투자하세요.
-            
-지금 경쟁사들은 AI로 야간/주말 고객까지 잡고 있습니다.
-대표님이 '나중에'를 고민하는 사이, 고객은 다른 곳으로 갑니다.
-
-무료 설계도는 받아두시고 검토하셔도 됩니다. 손해 볼 게 없잖아요?"""
-        
+        if for_llm:
+            formatted = []
+            for msg in history:
+                role_label = "고객" if msg['role'] == 'user' else "AI"
+                formatted.append(f"{role_label}: {msg['text']}")
+            return "\n".join(formatted)
         else:
-            return """말씀 감사합니다. 더 자세히 듣고 싶은데요,
-
-지금 가장 답답한 부분이 뭔가요?
-1️⃣ 광고비 대비 매출이 안 나와서?
-2️⃣ 고객이 문의만 하고 구매/예약 안 해서?
-3️⃣ 직원들이 야근해도 대응이 안 돼서?
-
-편하게 말씀해주세요."""
+            return history
     
-    def generate_initial_message(self) -> str:
+    def _extract_context(self, text: str):
         """
-        첫 인사 메시지 생성 (고정)
+        사용자 입력에서 컨텍스트 추출 (키워드 기반)
+        
+        Args:
+            text: 사용자 메시지
+        """
+        text_lower = text.lower()
+        context = st.session_state.user_context
+        
+        # 1. 업종 파악
+        if any(word in text_lower for word in ['병원', '의원', '성형', '피부과', '한의원', '치과']):
+            context['user_type'] = '병원'
+        elif any(word in text_lower for word in ['쇼핑몰', '커머스', '브랜드', '판매', '온라인몰']):
+            context['user_type'] = '쇼핑몰'
+        
+        # 2. 페인 포인트 파악
+        if any(word in text_lower for word in ['전환', '구매', '예약', '상담']):
+            context['pain_point'] = 'conversion'
+        elif any(word in text_lower for word in ['비용', '광고비', 'roas', '마케팅']):
+            context['pain_point'] = 'cost'
+        elif any(word in text_lower for word in ['직원', '인력', '야근', '대응']):
+            context['pain_point'] = 'manpower'
+        
+        # 3. 긴급도 파악
+        if any(word in text_lower for word in ['급', '빨리', '즉시', '바로', '당장']):
+            context['urgency'] = 'high'
+        elif any(word in text_lower for word in ['천천히', '검토', '고민', '생각']):
+            context['urgency'] = 'low'
+        
+        # 4. 가격 민감도
+        if any(word in text_lower for word in ['가격', '비용', '얼마', '저렴', '비싸']):
+            context['budget_sense'] = 'price_sensitive'
+        
+        # 5. 반박/우려 사항 기록
+        if any(word in text_lower for word in ['효과', '의심', '진짜', '정말', '믿']):
+            if 'skeptical' not in context['objections']:
+                context['objections'].append('skeptical')
+        
+        if any(word in text_lower for word in ['어렵', '복잡', '힘들']):
+            if 'complexity' not in context['objections']:
+                context['objections'].append('complexity')
+        
+        # 6. 키워드 수집 (명사 위주)
+        keywords = re.findall(r'[가-힣]{2,}', text)
+        context['keywords'].extend([k for k in keywords if len(k) >= 2])
+        context['keywords'] = list(set(context['keywords']))[-20:]  # 중복 제거, 최근 20개만
+    
+    def _update_trust_level(self):
+        """
+        대화 진행도에 따라 신뢰도 업데이트
+        신뢰도 = 인터랙션 수 * 10 (최대 100)
+        """
+        trust = min(st.session_state.interaction_count * 10, 100)
+        st.session_state.user_context['trust_level'] = trust
+    
+    def is_ready_for_conversion(self) -> bool:
+        """
+        리드 전환 타이밍 판단
         
         Returns:
-            첫 메시지
+            전환 준비 여부
         """
-        return """반갑습니다. <b>IMD 수석 아키텍트 AI</b>입니다.
-
-대표님, 솔직히 말씀드리죠.
-
-지금 <b>마케팅 비용 대비 효율(ROAS)</b>, 만족하시나요?"""
+        context = st.session_state.user_context
+        
+        # 조건: 신뢰도 40 이상 + (업종 파악됨 or 인터랙션 5회 이상)
+        trust_ok = context['trust_level'] >= 40
+        identified = context['user_type'] is not None
+        engaged = st.session_state.interaction_count >= 5
+        
+        return trust_ok and (identified or engaged)
+    
+    def get_recommended_buttons(self) -> List[str]:
+        """
+        현재 컨텍스트 기반 추천 버튼 생성
+        
+        Returns:
+            버튼 텍스트 리스트
+        """
+        from config import QUICK_REPLIES
+        
+        context = st.session_state.user_context
+        stage = context['stage']
+        
+        # 스테이지별 버튼
+        if stage == 'initial':
+            return QUICK_REPLIES['initial']
+        elif context['user_type'] == '병원':
+            return QUICK_REPLIES['hospital']
+        elif context['user_type'] == '쇼핑몰':
+            return QUICK_REPLIES['commerce']
+        elif self.is_ready_for_conversion():
+            return QUICK_REPLIES['final']
+        else:
+            return QUICK_REPLIES['initial']
+    
+    def update_stage(self, new_stage: str):
+        """
+        대화 단계 업데이트
+        
+        Args:
+            new_stage: 새로운 단계 (initial/engaged/conversion/complete)
+        """
+        st.session_state.user_context['stage'] = new_stage
+    
+    def reset_conversation(self):
+        """대화 초기화 (처음부터 다시)"""
+        st.session_state.chat_history = []
+        st.session_state.user_context = {
+            'user_type': None,
+            'pain_point': None,
+            'urgency': None,
+            'budget_sense': None,
+            'trust_level': 0,
+            'stage': 'initial',
+            'keywords': [],
+            'objections': [],
+        }
+        st.session_state.interaction_count = 0
+    
+    def get_summary(self) -> str:
+        """
+        대화 요약 (관리자/디버깅용)
+        
+        Returns:
+            요약 텍스트
+        """
+        context = st.session_state.user_context
+        history_count = len(st.session_state.chat_history)
+        
+        summary = f"""
+### 대화 요약
+- **총 메시지**: {history_count}개
+- **인터랙션**: {st.session_state.interaction_count}회
+- **신뢰도**: {context['trust_level']}/100
+- **업종**: {context['user_type'] or '미파악'}
+- **페인포인트**: {context['pain_point'] or '미파악'}
+- **긴급도**: {context['urgency'] or '미파악'}
+- **현재 단계**: {context['stage']}
+- **반박사항**: {', '.join(context['objections']) if context['objections'] else '없음'}
+"""
+        return summary
 
 
 # ============================================
-# 편의 함수
+# 편의 함수 (전역에서 바로 사용)
 # ============================================
-def get_prompt_engine() -> PromptEngine:
-    """PromptEngine 싱글톤 인스턴스 반환"""
-    if 'prompt_engine' not in st.session_state:
-        st.session_state.prompt_engine = PromptEngine()
-    return st.session_state.prompt_engine
-
-
-def generate_ai_response(user_input: str, context: Dict, history: str) -> str:
-    """
-    빠른 AI 응답 생성 (앱에서 바로 호출용)
-    
-    Args:
-        user_input: 사용자 메시지
-        context: 컨텍스트
-        history: 대화 히스토리
-    
-    Returns:
-        AI 응답
-    """
-    engine = get_prompt_engine()
-    return engine.generate_response(user_input, context, history)
+def get_conversation_manager() -> ConversationManager:
+    """ConversationManager 싱글톤 인스턴스 반환"""
+    if 'conv_manager' not in st.session_state:
+        st.session_state.conv_manager = ConversationManager()
+    return st.session_state.conv_manager
