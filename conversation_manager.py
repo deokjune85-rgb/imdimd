@@ -164,28 +164,24 @@ class ConversationManager:
     def is_ready_for_conversion(self) -> bool:
         """
         리드 전환 타이밍 판단
-        
-        Returns:
-            전환 준비 여부
         """
         # 신뢰도를 매번 재계산
         self._update_trust_level()
         
         context = st.session_state.user_context
         
-        # 조건 1: 긴급도가 high면 즉시 전환
+        # User 메시지 개수로 직접 판단
+        user_message_count = sum(1 for msg in st.session_state.chat_history if msg['role'] == 'user')
+        
+        # 조건 1: 긴급 버튼 눌렀으면 즉시
         if context.get('urgency') == 'high':
             return True
         
-        # 조건 2: 5회 이상 대화하면 무조건 폼 표시 (trust_level 50+)
-        if context['trust_level'] >= 50:
+        # 조건 2: 4번 이상 답변했으면 무조건 폼
+        if user_message_count >= 4:
             return True
         
-        # 조건 3: 4회 대화 + 업종 파악됨
-        trust_ok = context['trust_level'] >= 40
-        identified = context['user_type'] is not None
-        
-        return trust_ok and identified
+        return False
     
     def get_recommended_buttons(self) -> List[str]:
         """
