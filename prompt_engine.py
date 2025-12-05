@@ -1,11 +1,10 @@
 # prompt_engine.py
 """
 IMD Sales Bot - AI Response Generation
-Gemini API 전용 (디버깅 강화)
+Multi-LLM 지원 (Gemini, Groq, OpenRouter)
 """
 
 import streamlit as st
-import google.generativeai as genai
 from typing import Dict, Optional
 from config import (
     SYSTEM_PROMPT,
@@ -15,51 +14,108 @@ from config import (
     CASE_STUDIES
 )
 
+# LLM 선택에 따른 import
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except:
+    GEMINI_AVAILABLE = False
+
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except:
+    GROQ_AVAILABLE = False
+
+try:
+    import requests
+    OPENROUTER_AVAILABLE = True
+except:
+    OPENROUTER_AVAILABLE = False
+
 class PromptEngine:
-    """AI 응답 생성 엔진 (Gemini 전용)"""
+    """AI 응답 생성 엔진 (Gemini, Groq, OpenRouter 지원)"""
     
     def __init__(self):
-        """Gemini API 초기화"""
+        """LLM API 초기화"""
         self.model = None
-        self._init_gemini()
+        self.llm_type = None  # 'gemini', 'groq', 'openrouter'
+        self._init_llm()
     
-    def _init_gemini(self):
-        """Gemini API 설정"""
-        try:
-            # Secrets 확인
-            if "GEMINI_API_KEY" not in st.secrets:
-                st.error("❌ st.secrets에 'GEMINI_API_KEY'가 없습니다!")
-                st.info("Streamlit Cloud > Settings > Secrets에 추가하세요.")
-                self.model = None
+    def _init_llm(self):
+        """사용 가능한 LLM 자동 감지 및 초기화"""
+        
+        # 0순위: OpenRouter (가장 유연함, 여러 모델)
+        if "OPENROUTER_API_KEY" in st.secrets and OPENROUTER_AVAILABLE:
+            try:
+                self.api_key = st.secrets["OPENROUTER_API_KEY"]
+                # 모델 선택 (Secrets에서 지정 가능)
+                self.model_name = st.secrets.get(
+                    "OPENROUTER_MODEL", 
+                    "google/gemini-2.0-flash-exp:free"  # 기본값: Gemini 무료
+                )
+                self.model = "openrouter"  # 플래그
+                self.llm_type = "openrouter"
+                st.success(f"✅ OpenRouter 연결 완료 (모델: {self.model_name})")
                 return
-            
-            api_key = st.secrets["GEMINI_API_KEY"]
-            
-            if not api_key or api_key == "":
-                st.error("❌ GEMINI_API_KEY가 비어있습니다!")
-                self.model = None
+            except Exception as e:
+                st.warning(f"OpenRouter 초기화 실패: {e}")
+        
+        # 1순위: Groq (가장 빠르고 무료)
+        if "GROQ_API_KEY" in st.secrets and GROQ_AVAILABLE:
+            try:
+                api_key = st.secrets["GROQ_API_KEY"]
+                self.model = Groq(api_key=api_key)
+                self.llm_type = "groq"
+                st.success(f"✅ Groq API 연결 완료 (초고속 모드)")
                 return
-            
-            # API 키 유효성 표시 (처음 3글자만)
-            st.success(f"✅ Gemini API 키 감지됨: {api_key[:8]}...")
-            
-            # Gemini 설정
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(
-                model_name=GEMINI_MODEL,
-                generation_config={
-                    "temperature": GEMINI_TEMPERATURE,
-                    "max_output_tokens": GEMINI_MAX_TOKENS,
-                }
-            )
-            
-            st.success(f"✅ Gemini 모델 초기화 완료: {GEMINI_MODEL}")
-            
-        except Exception as e:
-            st.error(f"❌ Gemini API 초기화 실패: {str(e)}")
-            import traceback
-            st.code(traceback.format_exc(), language="python")
-            self.model = None
+            except Exception as e:
+                st.warning(f"Groq 초기화 실패: {e}")
+        
+        # 2순위: Gemini
+        if "GEMINI_API_KEY" in st.secrets and GEMINI_AVAILABLE:
+            try:
+                api_key = st.secrets["GEMINI_API_KEY"]
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel(
+                    model_name=GEMINI_MODEL,
+                    generation_config={
+                        "temperature": GEMINI_TEMPERATURE,
+                        "max_output_tokens": GEMINI_MAX_TOKENS,
+                    }
+                )
+                self.llm_type = "gemini"
+                st.success(f"✅ Gemini API 연결 완료")
+                return
+            except Exception as e:
+                st.warning(f"Gemini 초기화 실패: {e}")
+        
+        # 모두 실패
+        st.error("❌ 사용 가능한 LLM API가 없습니다!")
+        st.info("""
+        **Secrets에 다음 중 하나를 추가하세요:**
+        
+        1. OpenRouter (추천, 다양한 모델):
+           ```
+           OPENROUTER_API_KEY = "sk-or-v1-..."
+           OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free"
+           ```
+           발급: https://openrouter.ai/keys
+        
+        2. Groq (빠름, 무료):
+           ```
+           GROQ_API_KEY = "gsk_..."
+           ```
+           발급: https://console.groq.com/keys
+        
+        3. Gemini:
+           ```
+           GEMINI_API_KEY = "AIza..."
+           ```
+           발급: https://aistudio.google.com/apikey
+        """)
+        self.model = None
+        self.llm_type = None
     
     def generate_response(
         self,
@@ -78,54 +134,88 @@ class PromptEngine:
         Returns:
             AI 응답 텍스트
         """
-        # 디버그 정보
-        st.info(f"🔧 DEBUG: 모델 연결 상태 = {'연결됨' if self.model else '미연결'}")
-        
         if not self.model:
-            st.warning("⚠️ Gemini 미연결 - Fallback 응답 사용")
+            st.warning("⚠️ LLM 미연결 - Fallback 응답 사용")
             return self._fallback_response(user_input, context)
         
         try:
-            st.info("🔧 DEBUG: 프롬프트 생성 중...")
+            # 디버그: LLM 타입 확인
+            st.info(f"🔧 DEBUG: LLM 타입 = {self.llm_type}")
             
             # 동적 System Prompt 생성
             full_prompt = self._build_prompt(user_input, context, conversation_history)
-            
             st.info(f"🔧 DEBUG: 프롬프트 길이 = {len(full_prompt)} 글자")
-            st.info("🔧 DEBUG: Gemini API 호출 시작...")
             
-            # Gemini API 호출
-            response = self.model.generate_content(full_prompt)
+            # LLM별 호출 방식
+            if self.llm_type == "openrouter":
+                st.info("🔧 DEBUG: OpenRouter 호출 중...")
+                response = self._call_openrouter(full_prompt)
+            elif self.llm_type == "groq":
+                st.info("🔧 DEBUG: Groq 호출 중...")
+                response = self._call_groq(full_prompt)
+            elif self.llm_type == "gemini":
+                st.info("🔧 DEBUG: Gemini 호출 중...")
+                response = self._call_gemini(full_prompt)
+            else:
+                st.error(f"🔧 DEBUG: 알 수 없는 LLM 타입: {self.llm_type}")
+                return self._fallback_response(user_input, context)
             
-            st.success("🔧 DEBUG: Gemini 응답 받음!")
-            st.info(f"🔧 DEBUG: 원본 응답 길이 = {len(response.text)} 글자")
+            st.success(f"🔧 DEBUG: AI 응답 받음 (길이: {len(response)} 글자)")
             
             # 응답 후처리
-            ai_response = self._post_process_response(response.text.strip(), context)
-            
-            st.success(f"🔧 DEBUG: 최종 응답 길이 = {len(ai_response)} 글자")
-            
-            # 응답 미리보기 (처음 100자)
-            st.code(ai_response[:100] + "...", language="text")
+            ai_response = self._post_process_response(response, context)
+            st.success(f"🔧 DEBUG: 후처리 완료 (최종 길이: {len(ai_response)} 글자)")
             
             return ai_response
             
         except Exception as e:
-            st.error(f"❌ AI 응답 생성 실패: {str(e)}")
-            
-            # 상세 에러 로그
             import traceback
             error_detail = traceback.format_exc()
+            st.error(f"⚠️ AI 응답 생성 실패: {str(e)}")
             st.code(error_detail, language="python")
-            
-            # 에러 타입별 안내
-            error_str = str(e).lower()
-            if "quota" in error_str or "rate" in error_str:
-                st.warning("💡 API 할당량 초과! 잠시 후 다시 시도하세요.")
-            elif "invalid" in error_str:
-                st.warning("💡 API 키가 유효하지 않습니다. Secrets 확인하세요.")
-            
             return self._fallback_response(user_input, context)
+    
+    def _call_openrouter(self, prompt: str) -> str:
+        """OpenRouter API 호출"""
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "HTTP-Referer": "https://imd-sales-bot.streamlit.app",  # 선택사항
+                "X-Title": "IMD Sales Bot",  # 선택사항
+            },
+            json={
+                "model": self.model_name,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.85,
+                "max_tokens": 1000,
+            }
+        )
+        
+        if response.status_code != 200:
+            raise Exception(f"OpenRouter API 오류: {response.status_code} - {response.text}")
+        
+        result = response.json()
+        return result["choices"][0]["message"]["content"]
+    
+    def _call_groq(self, prompt: str) -> str:
+        """Groq API 호출"""
+        chat_completion = self.model.chat.completions.create(
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            model="llama-3.1-70b-versatile",  # 가장 성능 좋은 무료 모델
+            temperature=0.85,
+            max_tokens=1000,
+        )
+        return chat_completion.choices[0].message.content
+    
+    def _call_gemini(self, prompt: str) -> str:
+        """Gemini API 호출"""
+        response = self.model.generate_content(prompt)
+        return response.text
     
     def _build_prompt(
         self,
@@ -221,8 +311,7 @@ class PromptEngine:
         response = response.replace('\n\n\n', '\n\n')
         
         # 2. 마크다운 굵기 처리 (** → <b>)
-        import re
-        response = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', response)
+        response = response.replace('**', '<b>', 1).replace('**', '</b>', 1)
         
         # 3. 너무 길면 자르기 (500자 제한)
         if len(response) > 500:
