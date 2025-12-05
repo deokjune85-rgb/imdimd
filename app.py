@@ -90,7 +90,7 @@ footer {{
 
 .title-box h1 {{
     font-family: Arial, sans-serif !important;
-    font-size: 24px !important;
+    font-size: 28px !important;  /* 제목 더 크게 */
     font-weight: 700 !important;
     color: {COLOR_PRIMARY} !important;
     margin: 0 !important;
@@ -121,7 +121,7 @@ footer {{
     margin: 18px 0 10px 0 !important;
     max-width: 85% !important;
     display: block !important;
-    font-size: 18px !important;          /* 폰트 키움 */
+    font-size: 18px !important;
     line-height: 1.6 !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
     border: none !important;
@@ -277,7 +277,7 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .title-box h1 {{
-        font-size: 20px !important;
+        font-size: 22px !important;
         line-height: 1.1 !important;
     }}
     
@@ -327,7 +327,7 @@ if "app_initialized" not in st.session_state:
 st.markdown(
     f"""
 <div class="title-box">
-    <h1>IMD STRATEGIC CONSULTING</h1>
+    <h1>IMD MEDICAL CUNSULTING</h1>
     <div class="sub">원장님의 진료 철학을 학습한 'AI 수석 실장' 데모</div>
     <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">
         엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)
