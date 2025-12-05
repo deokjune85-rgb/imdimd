@@ -265,6 +265,10 @@ if user_input:
         ai_response = generate_ai_response(user_input, context, history)
     
     conv_manager.add_message("ai", ai_response)
+    
+    # AI 응답 후 신뢰도 재확인 (폼 표시 위해)
+    conv_manager._update_trust_level()
+    
     st.rerun()
 
 # ============================================
