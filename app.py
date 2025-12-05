@@ -20,7 +20,8 @@ from config import (
     COLOR_AI_BUBBLE,
     COLOR_USER_BUBBLE,
     COLOR_BORDER,
-    URGENCY_OPTIONS
+    URGENCY_OPTIONS,
+    GEMINI_MODEL
 )
 
 # ============================================
@@ -357,6 +358,15 @@ with st.sidebar:
     
     st.markdown("---")
     
+    # Gemini 상태 확인 (중요!)
+    st.markdown("### 🔧 시스템 상태")
+    if prompt_engine.model:
+        st.success("✅ AI 연결됨")
+        st.caption(f"모델: {GEMINI_MODEL}")
+    else:
+        st.error("❌ AI 미연결")
+        st.caption("Secrets 확인 필요")
+    
     # 진행도
     trust = conv_manager.get_context()['trust_level']
     st.metric("상담 진행도", f"{trust}%")
@@ -366,7 +376,8 @@ with st.sidebar:
         st.json({
             "messages": len(conv_manager.get_history()),
             "stage": conv_manager.get_context()['stage'],
-            "user_type": conv_manager.get_context().get('user_type', 'Unknown')
+            "user_type": conv_manager.get_context().get('user_type', 'Unknown'),
+            "retry_count": prompt_engine.retry_count
         })
 
 # ============================================
