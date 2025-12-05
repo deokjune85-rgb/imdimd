@@ -1,7 +1,10 @@
 # app.py
 """
 IMD Strategic Consulting - AI Sales Bot (B2B)
-한의원 원장님 대상 AI 실장 시스템 판매 (원장 데모용)
+한의원 원장님 대상 AI 실장 시스템 데모
+- 화이트 모드
+- AI 답변 그라데이션 텍스트
+- Gemini 느낌의 "생각 중..." 버블 (타자 애니메이션 없음)
 """
 
 import time
@@ -23,8 +26,10 @@ except Exception:
         pass
     cfg = _Dummy()  # type: ignore
 
+
 def _get(name: str, default: Any) -> Any:
     return getattr(cfg, name, default)
+
 
 APP_TITLE = _get("APP_TITLE", "IMD Strategic Consulting")
 APP_ICON = _get("APP_ICON", "💼")
@@ -48,7 +53,7 @@ st.set_page_config(
 )
 
 # ============================================
-# 2. CSS (화이트 모드 / 모바일 최적화)
+# 2. CSS (화이트 모드 + 그라데이션 텍스트 + 생각중 버블)
 # ============================================
 st.markdown(
     f"""
@@ -108,6 +113,7 @@ footer {{
     margin-bottom: 100px;
 }}
 
+/* AI 메시지 버블 */
 .ai-msg {{
     background: white !important;
     color: #1F2937 !important;
@@ -129,6 +135,32 @@ footer {{
     display: none !important;
 }}
 
+/* AI 답변 텍스트 그라데이션 */
+.ai-text {{
+    background: linear-gradient(135deg, #111827, #2563EB, #0EA5E9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}}
+
+/* "생각 중..." 버블 */
+.ai-msg.thinking {{
+    background: #F3F4F6 !important;
+    color: #4B5563 !important;
+    padding: 10px 14px !important;
+    border-radius: 16px !important;
+    font-size: 13px !important;
+    box-shadow: none !important;
+    border: 1px dashed #E5E7EB !important;
+    animation: pulse 1.4s ease-in-out infinite;
+}}
+
+@keyframes pulse {{
+    0%   {{ opacity: 0.4; transform: translateY(1px); }}
+    50%  {{ opacity: 1.0; transform: translateY(0); }}
+    100% {{ opacity: 0.4; transform: translateY(1px); }}
+}}
+
+/* 사용자 메시지 */
 .user-msg {{
     background: {COLOR_USER_BUBBLE} !important;
     color: #1F2937 !important;
@@ -277,12 +309,12 @@ if "app_initialized" not in st.session_state:
         "안녕하십니까, 원장님.\n\n"
         "저는 24시간 잠들지 않는 **AI 상담실장**입니다.\n\n"
         "진료실에서 이런 말, 자주 들으시죠?\n\n"
-        "> \"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요.\"\n\n"
+        "\"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요.\"\n\n"
         "그 순간, 진료 동선도 끊기고, 원장님 마음도 같이 꺾이실 겁니다.\n\n"
         "저는 그 **직전 단계에서**, 환자의 마음을 열고\n"
         "시술과 프로그램을 받아들일 준비를 시키는 역할을 합니다.\n\n"
-        "백문이 불여일견입니다.\n"
-        "지금부터 원장님은 잠시 **'만성 피로 환자' 역할**을 해봐 주십시오.\n"
+        "백문이 불여일견입니다. 지금부터 원장님은 잠시 "
+        "'만성 피로 환자' 역할을 해봐 주십시오.\n"
         "편한 말투로 현재 상태를 한 줄만 말씀해 주세요."
     )
     conv_manager.add_message("ai", initial_msg)
@@ -307,13 +339,15 @@ st.markdown(
 )
 
 # ============================================
-# 5. 채팅 히스토리 출력
+# 5. 채팅 히스토리 출력 (AI는 그라데이션)
 # ============================================
 chat_html = '<div class="chat-area">'
 
 for msg in conv_manager.get_history():
     if msg["role"] == "ai":
-        chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
+        chat_html += (
+            f'<div class="ai-msg"><div class="ai-text">{msg["text"]}</div></div>'
+        )
     elif msg["role"] == "user":
         chat_html += (
             f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
@@ -323,7 +357,7 @@ chat_html += "</div>"
 st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
-# 6. CTA 폼 (시뮬레이션 끝난 후)
+# 6. CTA 폼 (시뮬레이션 끝난 후 자동 노출)
 # ============================================
 chat_history = conv_manager.get_history()
 last_msg_is_ai = bool(chat_history and chat_history[-1]["role"] == "ai")
@@ -402,7 +436,7 @@ if (
                     st.error(f"오류: {message}")
 
 # ============================================
-# 7. 입력창
+# 7. 입력창 + 생각 중 버블
 # ============================================
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
@@ -424,6 +458,7 @@ if user_input:
 원장님, 방금 보신 대화가 실제 환자에게 제가 자동으로 하는 상담 흐름입니다.
 
 정리해보면, 저는:
+
 1. 환자의 표현을 그대로 받아주고 공감하고,
 2. 증상을 기간·강도·수면·통증 부위로 쪼개서 듣고,
 3. 그 정보를 바탕으로 원장님 병원의 진료 철학에 맞게 설명하고,
@@ -436,8 +471,8 @@ if user_input:
 밤 11시, 퇴근하고 누워서 검색하는 직장인이
 "만성 피로 한약"을 물으면, 제가 알아서 상담하고 예약까지 받아둡니다.
 
-실제 적용 사례로 말씀드리면:
-서울 A한의원 (월 신규 환자 약 80명 수준)
+실제 적용 사례로 말씀드리면: 서울 A한의원 (월 신규 환자 약 80명 수준)
+
 - AI 도입 후 2개월 동안 온라인 문의 수 약 40% 증가
 - 예약 전환율 18% → 22.5% (약 25% 상승)
 
@@ -446,10 +481,29 @@ if user_input:
 """
         conv_manager.add_message("ai", closing_msg)
         st.rerun()
+
     else:
+        # 제미나이 느낌의 "생각 중..." 버블 (타자 효과 없음)
+        thinking_placeholder = st.empty()
+        thinking_html = """
+<div class="chat-area">
+    <div class="ai-msg thinking">
+        AI 수석 실장이 원장님의 상황을 정리하고 있습니다...<br/>
+        · 현재 환자 표현 정리<br/>
+        · 진료/매출 구조에 미치는 영향 상상<br/>
+        · AI가 들어갈 수 있는 지점 계산
+    </div>
+</div>
+"""
+        thinking_placeholder.markdown(thinking_html, unsafe_allow_html=True)
+
         with st.spinner("분석 중..."):
-            time.sleep(1.0)
             ai_response = generate_ai_response(user_input, context, history)
+
+        # 생각 중 버블 제거
+        thinking_placeholder.empty()
+
+        # 실제 답변 추가 (그라데이션으로 렌더링됨)
         conv_manager.add_message("ai", ai_response)
         st.rerun()
 
