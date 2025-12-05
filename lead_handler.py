@@ -43,7 +43,7 @@ class LeadHandler:
                 self.sheet.append_row(SHEET_COLUMNS)
                 
         except Exception as e:
-            st.warning(f"⚠️ Google Sheets 연결 실패: {str(e)}")
+            st.warning(f"⚠️ Google Sheets 연결 실패: {str(e)}\n로컬 저장 모드로 작동합니다.")
             self.client = None
             self.sheet = None
     
