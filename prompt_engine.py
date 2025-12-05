@@ -1,421 +1,385 @@
-# prompt_engine.py
+# app.py
 """
-IMD Sales Bot - AI Response Generation
-Multi-LLM 지원 (Gemini, Groq, OpenRouter)
+IMD Sales Bot - Main Application
+다크 엘레강스 (McKinsey 컨설팅 스타일)
 """
 
 import streamlit as st
-from typing import Dict, Optional
+import time
+from conversation_manager import get_conversation_manager
+from prompt_engine import get_prompt_engine, generate_ai_response
+from lead_handler import LeadHandler
 from config import (
-    SYSTEM_PROMPT,
-    GEMINI_MODEL,
-    GEMINI_TEMPERATURE,
-    GEMINI_MAX_TOKENS,
-    CASE_STUDIES
+    APP_TITLE,
+    APP_ICON,
+    LAYOUT,
+    COLOR_PRIMARY,
+    COLOR_SECONDARY,
+    COLOR_BG,
+    COLOR_TEXT,
+    COLOR_AI_BUBBLE,
+    COLOR_USER_BUBBLE,
+    COLOR_BORDER,
+    URGENCY_OPTIONS
 )
 
-# LLM 선택에 따른 import
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except:
-    GEMINI_AVAILABLE = False
+# ============================================
+# 0. 페이지 설정
+# ============================================
+st.set_page_config(
+    page_title=APP_TITLE,
+    page_icon=APP_ICON,
+    layout=LAYOUT
+)
 
-try:
-    from groq import Groq
-    GROQ_AVAILABLE = True
-except:
-    GROQ_AVAILABLE = False
+# ============================================
+# 1. CSS 스타일링 (다크 엘레강스)
+# ============================================
+def load_css():
+    """다크 엘레강스 CSS"""
+    custom_css = f"""
+    <style>
+    /* 전체 배경 */
+    .stApp {{
+        background: linear-gradient(135deg, {COLOR_BG} 0%, #1a1f35 100%);
+        font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: {COLOR_TEXT};
+    }}
+    
+    /* 타이틀 */
+    h1 {{
+        color: {COLOR_PRIMARY} !important;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: -0.5px;
+        margin-bottom: 8px;
+    }}
+    
+    h2, h3 {{
+        color: {COLOR_TEXT} !important;
+        font-weight: 600;
+    }}
+    
+    /* 서브타이틀 */
+    .subtitle {{
+        text-align: center;
+        color: #94A3B8;
+        font-size: 15px;
+        margin-bottom: 32px;
+        font-weight: 400;
+    }}
+    
+    /* 채팅 컨테이너 */
+    .chat-container {{
+        max-width: 720px;
+        margin: 24px auto;
+        padding-bottom: 100px;
+    }}
+    
+    /* AI 메시지 버블 */
+    .chat-bubble-ai {{
+        background: linear-gradient(135deg, {COLOR_AI_BUBBLE} 0%, #2d3748 100%);
+        color: {COLOR_TEXT} !important;
+        padding: 20px 24px;
+        border-radius: 16px 16px 16px 4px;
+        margin-bottom: 16px;
+        width: fit-content;
+        max-width: 85%;
+        font-size: 15px;
+        line-height: 1.7;
+        border-left: 3px solid {COLOR_PRIMARY};
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: fadeIn 0.6s ease;
+    }}
+    
+    /* 사용자 메시지 버블 */
+    .chat-bubble-user {{
+        background: {COLOR_USER_BUBBLE};
+        color: {COLOR_TEXT} !important;
+        padding: 16px 24px;
+        border-radius: 16px 16px 4px 16px;
+        margin-bottom: 16px;
+        margin-left: auto;
+        width: fit-content;
+        max-width: 75%;
+        font-size: 15px;
+        font-weight: 500;
+        animation: slideIn 0.4s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        border: 1px solid {COLOR_BORDER};
+    }}
+    
+    /* 애니메이션 */
+    @keyframes fadeIn {{
+        from {{ opacity: 0; transform: translateY(12px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    
+    @keyframes slideIn {{
+        from {{ opacity: 0; transform: translateX(12px); }}
+        to {{ opacity: 1; transform: translateX(0); }}
+    }}
+    
+    /* 추천 버튼 */
+    .stButton > button {{
+        width: 100%;
+        background: transparent;
+        color: {COLOR_PRIMARY} !important;
+        border: 1.5px solid {COLOR_BORDER};
+        padding: 14px 20px;
+        font-size: 14px;
+        border-radius: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        margin-bottom: 8px;
+        letter-spacing: 0.3px;
+    }}
+    
+    .stButton > button:hover {{
+        background: {COLOR_AI_BUBBLE};
+        border-color: {COLOR_PRIMARY};
+        box-shadow: 0 0 16px rgba(212, 175, 55, 0.2);
+        transform: translateY(-2px);
+    }}
+    
+    /* 입력창 */
+    .stChatInput > div {{
+        background-color: {COLOR_AI_BUBBLE} !important;
+        border: 1px solid {COLOR_BORDER} !important;
+        border-radius: 12px !important;
+    }}
+    
+    input[type="text"], textarea, .stSelectbox > div > div {{
+        background-color: {COLOR_AI_BUBBLE} !important;
+        color: {COLOR_TEXT} !important;
+        border: 1px solid {COLOR_BORDER} !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+    }}
+    
+    /* 폼 스타일 */
+    .stForm {{
+        background: linear-gradient(135deg, {COLOR_AI_BUBBLE} 0%, #2d3748 100%);
+        padding: 28px;
+        border-radius: 16px;
+        border: 1px solid {COLOR_PRIMARY};
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }}
+    
+    /* 섹션 제목 */
+    .section-title {{
+        color: {COLOR_PRIMARY};
+        font-size: 18px;
+        font-weight: 600;
+        margin: 24px 0 12px 0;
+        text-align: center;
+    }}
+    
+    /* 구분선 */
+    hr {{
+        border-color: {COLOR_BORDER};
+        opacity: 0.3;
+    }}
+    </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
 
-try:
-    import requests
-    OPENROUTER_AVAILABLE = True
-except:
-    OPENROUTER_AVAILABLE = False
+load_css()
 
-class PromptEngine:
-    """AI 응답 생성 엔진 (Gemini, Groq, OpenRouter 지원)"""
+# ============================================
+# 2. 초기화
+# ============================================
+conv_manager = get_conversation_manager()
+prompt_engine = get_prompt_engine()
+lead_handler = LeadHandler()
+
+# 첫 방문 시 웰컴 메시지
+if len(conv_manager.get_history()) == 0:
+    initial_msg = prompt_engine.generate_initial_message()
+    conv_manager.add_message("ai", initial_msg)
+
+# ============================================
+# 3. 헤더
+# ============================================
+st.title("IMD AI 전략 컨설팅")
+st.markdown('<p class="subtitle">데이터 기반 비즈니스 성장 솔루션</p>', unsafe_allow_html=True)
+
+# ============================================
+# 4. 채팅 히스토리 렌더링
+# ============================================
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
+for chat in conv_manager.get_history():
+    role_class = "chat-bubble-ai" if chat['role'] == 'ai' else "chat-bubble-user"
+    st.markdown(f'<div class="{role_class}">{chat["text"]}</div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================
+# 5. 추천 버튼
+# ============================================
+if not conv_manager.is_ready_for_conversion():
+    st.markdown('<p class="section-title">주요 문의 사항</p>', unsafe_allow_html=True)
     
-    def __init__(self):
-        """LLM API 초기화"""
-        self.model = None
-        self.llm_type = None  # 'gemini', 'groq', 'openrouter'
-        self._init_llm()
+    buttons = conv_manager.get_recommended_buttons()
     
-    def _init_llm(self):
-        """사용 가능한 LLM 자동 감지 및 초기화"""
-        
-        # 0순위: OpenRouter (가장 유연함, 여러 모델)
-        if "OPENROUTER_API_KEY" in st.secrets and OPENROUTER_AVAILABLE:
-            try:
-                self.api_key = st.secrets["OPENROUTER_API_KEY"]
-                # 모델 선택 (Secrets에서 지정 가능)
-                self.model_name = st.secrets.get(
-                    "OPENROUTER_MODEL", 
-                    "google/gemini-2.0-flash-exp:free"  # 기본값: Gemini 무료
-                )
-                self.model = "openrouter"  # 플래그
-                self.llm_type = "openrouter"
-                st.success(f"✅ OpenRouter 연결 완료 (모델: {self.model_name})")
-                return
-            except Exception as e:
-                st.warning(f"OpenRouter 초기화 실패: {e}")
-        
-        # 1순위: Groq (가장 빠르고 무료)
-        if "GROQ_API_KEY" in st.secrets and GROQ_AVAILABLE:
-            try:
-                api_key = st.secrets["GROQ_API_KEY"]
-                self.model = Groq(api_key=api_key)
-                self.llm_type = "groq"
-                st.success(f"✅ Groq API 연결 완료 (초고속 모드)")
-                return
-            except Exception as e:
-                st.warning(f"Groq 초기화 실패: {e}")
-        
-        # 2순위: Gemini
-        if "GEMINI_API_KEY" in st.secrets and GEMINI_AVAILABLE:
-            try:
-                api_key = st.secrets["GEMINI_API_KEY"]
-                genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel(
-                    model_name=GEMINI_MODEL,
-                    generation_config={
-                        "temperature": GEMINI_TEMPERATURE,
-                        "max_output_tokens": GEMINI_MAX_TOKENS,
-                    }
-                )
-                self.llm_type = "gemini"
-                st.success(f"✅ Gemini API 연결 완료")
-                return
-            except Exception as e:
-                st.warning(f"Gemini 초기화 실패: {e}")
-        
-        # 모두 실패
-        st.error("❌ 사용 가능한 LLM API가 없습니다!")
-        st.info("""
-        **Secrets에 다음 중 하나를 추가하세요:**
-        
-        1. OpenRouter (추천, 다양한 모델):
-           ```
-           OPENROUTER_API_KEY = "sk-or-v1-..."
-           OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free"
-           ```
-           발급: https://openrouter.ai/keys
-        
-        2. Groq (빠름, 무료):
-           ```
-           GROQ_API_KEY = "gsk_..."
-           ```
-           발급: https://console.groq.com/keys
-        
-        3. Gemini:
-           ```
-           GEMINI_API_KEY = "AIza..."
-           ```
-           발급: https://aistudio.google.com/apikey
-        """)
-        self.model = None
-        self.llm_type = None
+    # 버튼 레이아웃
+    if len(buttons) == 3:
+        cols = st.columns(3)
+    else:
+        cols = st.columns(len(buttons))
     
-    def generate_response(
-        self,
-        user_input: str,
-        context: Dict,
-        conversation_history: str
-    ) -> str:
-        """
-        사용자 입력에 대한 AI 응답 생성
+    for idx, button_text in enumerate(buttons):
+        with cols[idx]:
+            if st.button(button_text, key=f"quick_{idx}"):
+                # 버튼 클릭 처리
+                conv_manager.add_message("user", button_text, metadata={"type": "button"})
+                
+                # AI 응답 생성
+                context = conv_manager.get_context()
+                history = conv_manager.get_formatted_history(for_llm=True)
+                
+                with st.spinner("분석 중..."):
+                    time.sleep(0.8)
+                    ai_response = generate_ai_response(button_text, context, history)
+                
+                conv_manager.add_message("ai", ai_response)
+                st.rerun()
+
+# ============================================
+# 6. 채팅 입력창
+# ============================================
+user_input = st.chat_input("문의 사항을 입력하세요")
+
+if user_input:
+    # 사용자 메시지 추가
+    conv_manager.add_message("user", user_input, metadata={"type": "text"})
+    
+    # AI 응답 생성
+    context = conv_manager.get_context()
+    history = conv_manager.get_formatted_history(for_llm=True)
+    
+    with st.spinner("분석 중..."):
+        time.sleep(1.0)
+        ai_response = generate_ai_response(user_input, context, history)
+    
+    conv_manager.add_message("ai", ai_response)
+    st.rerun()
+
+# ============================================
+# 7. 리드 전환 폼
+# ============================================
+if conv_manager.is_ready_for_conversion() and conv_manager.get_context()['stage'] != 'complete':
+    st.markdown("---")
+    st.markdown('<p class="section-title">AI 아키텍처 설계 제안서 신청</p>', unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#94A3B8; font-size:14px;'>담당 컨설턴트가 24시간 내 연락드립니다</p>", unsafe_allow_html=True)
+    
+    with st.form("lead_capture_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("성함 / 직함", placeholder="홍길동 / 대표이사")
+        with col2:
+            contact = st.text_input("연락처", placeholder="010-1234-5678")
         
-        Args:
-            user_input: 사용자 메시지
-            context: 대화 컨텍스트 (user_type, pain_point 등)
-            conversation_history: 최근 대화 히스토리
+        company = st.text_input("기업명 / 병원명", placeholder="예: (주)ABC컴퍼니")
+        urgency = st.selectbox("도입 희망 시기", URGENCY_OPTIONS)
         
-        Returns:
-            AI 응답 텍스트
-        """
-        if not self.model:
-            st.warning("⚠️ LLM 미연결 - Fallback 응답 사용")
-            return self._fallback_response(user_input, context)
+        submitted = st.form_submit_button("제안서 신청", use_container_width=True)
         
-        try:
-            # 디버그: LLM 타입 확인
-            st.info(f"🔧 DEBUG: LLM 타입 = {self.llm_type}")
-            
-            # 동적 System Prompt 생성
-            full_prompt = self._build_prompt(user_input, context, conversation_history)
-            st.info(f"🔧 DEBUG: 프롬프트 길이 = {len(full_prompt)} 글자")
-            
-            # LLM별 호출 방식
-            if self.llm_type == "openrouter":
-                st.info("🔧 DEBUG: OpenRouter 호출 중...")
-                response = self._call_openrouter(full_prompt)
-            elif self.llm_type == "groq":
-                st.info("🔧 DEBUG: Groq 호출 중...")
-                response = self._call_groq(full_prompt)
-            elif self.llm_type == "gemini":
-                st.info("🔧 DEBUG: Gemini 호출 중...")
-                response = self._call_gemini(full_prompt)
+        if submitted:
+            if not name or not contact:
+                st.error("필수 정보를 입력해주세요.")
             else:
-                st.error(f"🔧 DEBUG: 알 수 없는 LLM 타입: {self.llm_type}")
-                return self._fallback_response(user_input, context)
-            
-            st.success(f"🔧 DEBUG: AI 응답 받음 (길이: {len(response)} 글자)")
-            
-            # 응답 후처리
-            ai_response = self._post_process_response(response, context)
-            st.success(f"🔧 DEBUG: 후처리 완료 (최종 길이: {len(ai_response)} 글자)")
-            
-            return ai_response
-            
-        except Exception as e:
-            import traceback
-            error_detail = traceback.format_exc()
-            st.error(f"⚠️ AI 응답 생성 실패: {str(e)}")
-            st.code(error_detail, language="python")
-            return self._fallback_response(user_input, context)
-    
-    def _call_openrouter(self, prompt: str) -> str:
-        """OpenRouter API 호출"""
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "HTTP-Referer": "https://imd-sales-bot.streamlit.app",  # 선택사항
-                "X-Title": "IMD Sales Bot",  # 선택사항
-            },
-            json={
-                "model": self.model_name,
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.85,
-                "max_tokens": 1000,
-            }
-        )
-        
-        if response.status_code != 200:
-            raise Exception(f"OpenRouter API 오류: {response.status_code} - {response.text}")
-        
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-    
-    def _call_groq(self, prompt: str) -> str:
-        """Groq API 호출"""
-        chat_completion = self.model.chat.completions.create(
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            model="llama-3.1-70b-versatile",  # 가장 성능 좋은 무료 모델
-            temperature=0.85,
-            max_tokens=1000,
-        )
-        return chat_completion.choices[0].message.content
-    
-    def _call_gemini(self, prompt: str) -> str:
-        """Gemini API 호출"""
-        response = self.model.generate_content(prompt)
-        return response.text
-    
-    def _build_prompt(
-        self,
-        user_input: str,
-        context: Dict,
-        conversation_history: str
-    ) -> str:
-        """
-        최종 프롬프트 조립
-        
-        Args:
-            user_input: 사용자 메시지
-            context: 컨텍스트
-            conversation_history: 대화 히스토리
-        
-        Returns:
-            완성된 프롬프트
-        """
-        # System Prompt에 컨텍스트 주입
-        system_prompt = SYSTEM_PROMPT.format(
-            user_type=context.get('user_type') or '미파악',
-            pain_point=context.get('pain_point') or '미파악',
-            stage=context.get('stage', 'initial'),
-            trust_level=context.get('trust_level', 0)
-        )
-        
-        # 반박 사항 대응 전략 추가
-        if context.get('objections'):
-            objection_guide = self._get_objection_handling(context['objections'])
-            system_prompt += f"\n\n## 현재 고객 우려사항\n{objection_guide}"
-        
-        # 사례 연구 추가 (업종별)
-        if context.get('user_type') in CASE_STUDIES:
-            case = CASE_STUDIES[context['user_type']]
-            system_prompt += f"\n\n## 제시할 수 있는 실제 사례\n- {case['title']}: {case['result']}\n- 고객 후기: \"{case['quote']}\""
-        
-        # 최종 프롬프트 조립
-        full_prompt = f"""{system_prompt}
+                # 리드 저장
+                lead_data = {
+                    'user_type': conv_manager.get_context().get('user_type', 'Unknown'),
+                    'stage': 'Lead Converted',
+                    'name': name,
+                    'contact': contact,
+                    'company': company,
+                    'urgency': urgency,
+                    'source': 'IMD_AI_Consultant'
+                }
+                
+                success, message = lead_handler.save_lead(lead_data)
+                
+                if success:
+                    # 완료 메시지
+                    completion_msg = f"""
+### 신청이 완료되었습니다
+
+**{name}님**, 감사합니다.
+
+담당 컨설턴트가 **24시간 내**로 아래 연락처로 맞춤 분석 리포트와 함께 연락드립니다.
+
+**연락처**: {contact}  
+**희망 시기**: {urgency}
 
 ---
 
-## 최근 대화 내역
-{conversation_history}
-
----
-
-## 고객의 최신 입력
-고객: {user_input}
-
----
-
-**위 맥락을 고려하여, 지금 즉시 응답하세요.**
-응답은 3-5문장 이내로 간결하게 작성하세요.
-핵심 메시지 하나에 집중하세요.
+**다음 단계:**
+1. 24시간 내: 1차 전화 상담
+2. 48시간 내: 맞춤 AI 설계 제안서 발송
+3. 7일 내: 실제 데모 시연 (선택)
 """
-        return full_prompt
-    
-    def _get_objection_handling(self, objections: list) -> str:
-        """
-        반박 사항별 대응 전략
-        
-        Args:
-            objections: 우려 사항 리스트
-        
-        Returns:
-            대응 가이드
-        """
-        strategies = {
-            'skeptical': "→ 실제 사례와 구체적 수치로 증명하세요. '지금 저와 대화하는 것처럼...' 프레임 사용",
-            'complexity': "→ '설치 3일, 교육 1시간이면 끝' 같이 구체적 일정 제시",
-            'price_sensitive': "→ 가격이 아닌 ROI로 전환. '월 200만원 투자로 월 1000만원 추가 매출' 식으로 제시"
-        }
-        
-        guide = []
-        for obj in objections:
-            if obj in strategies:
-                guide.append(strategies[obj])
-        
-        return "\n".join(guide) if guide else "고객의 우려를 공감하고 구체적 해결책 제시"
-    
-    def _post_process_response(self, response: str, context: Dict) -> str:
-        """
-        AI 응답 후처리 (포맷팅, 안전장치)
-        
-        Args:
-            response: 원본 응답
-            context: 컨텍스트
-        
-        Returns:
-            처리된 응답
-        """
-        # 1. 과도한 줄바꿈 제거
-        response = response.replace('\n\n\n', '\n\n')
-        
-        # 2. 마크다운 굵기 처리 (** → <b>)
-        response = response.replace('**', '<b>', 1).replace('**', '</b>', 1)
-        
-        # 3. 너무 길면 자르기 (500자 제한)
-        if len(response) > 500:
-            response = response[:480] + "...\n\n계속 들어보시겠어요?"
-        
-        # 4. 금지 단어 필터링
-        forbidden = ['LLM', 'RAG', 'API', '머신러닝', '딥러닝']
-        for word in forbidden:
-            if word in response:
-                response = response.replace(word, 'AI 기술')
-        
-        # 5. CTA 자동 추가 (전환 타이밍)
-        if context.get('trust_level', 0) >= 60 and '무료' not in response:
-            response += "\n\n💡 지금 무료 설계도라도 받아보시는 건 어떨까요?"
-        
-        return response
-    
-    def _fallback_response(self, user_input: str, context: Dict) -> str:
-        """
-        API 실패 시 폴백 응답 (규칙 기반)
-        
-        Args:
-            user_input: 사용자 입력
-            context: 컨텍스트
-        
-        Returns:
-            폴백 응답
-        """
-        user_lower = user_input.lower()
-        
-        # 키워드 기반 단순 응답
-        if any(word in user_lower for word in ['가격', '비용', '얼마']):
-            return """대표님, 솔직히 말씀드리면 '가격'보다 중요한 게 있습니다.
-            
-지금 홈페이지 방문자 100명 중 몇 명이 구매/예약하시나요?
-만약 2%라면, AI로 3%만 올려도 월매출이 50% 늘어납니다.
-
-투자 대비 수익(ROI)을 먼저 계산해보시겠어요?"""
-        
-        elif any(word in user_lower for word in ['효과', '진짜', '정말']):
-            case = CASE_STUDIES.get(context.get('user_type', 'hospital'))
-            return f"""당연히 의심스러우실 겁니다. 근데 대표님, 지금 저와 대화하시면서 느끼셨나요?
-
-제가 사람처럼 대답한다는 걸?
-
-실제로 <b>{case['title']}</b>는 도입 후 <b>{case['result']}</b> 달성했습니다.
-
-"{case['quote']}"
-
-실제 사례를 더 보시겠어요?"""
-        
-        elif any(word in user_lower for word in ['시간', '바쁘', '나중']):
-            return """대표님, 딱 2분만 투자하세요.
-            
-지금 경쟁사들은 AI로 야간/주말 고객까지 잡고 있습니다.
-대표님이 '나중에'를 고민하는 사이, 고객은 다른 곳으로 갑니다.
-
-무료 설계도는 받아두시고 검토하셔도 됩니다. 손해 볼 게 없잖아요?"""
-        
-        else:
-            return """말씀 감사합니다. 더 자세히 듣고 싶은데요,
-
-지금 가장 답답한 부분이 뭔가요?
-1️⃣ 광고비 대비 매출이 안 나와서?
-2️⃣ 고객이 문의만 하고 구매/예약 안 해서?
-3️⃣ 직원들이 야근해도 대응이 안 돼서?
-
-편하게 말씀해주세요."""
-    
-    def generate_initial_message(self) -> str:
-        """
-        첫 인사 메시지 생성 (고정)
-        
-        Returns:
-            첫 메시지
-        """
-        return """반갑습니다. <b>IMD 수석 아키텍트 AI</b>입니다.
-
-대표님, 솔직히 말씀드리죠.
-
-지금 <b>마케팅 비용 대비 효율(ROAS)</b>, 만족하시나요?"""
-
+                    conv_manager.add_message("ai", completion_msg)
+                    conv_manager.update_stage('complete')
+                    
+                    st.success("신청이 완료되었습니다.")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(f"오류: {message}")
 
 # ============================================
-# 편의 함수
+# 8. 완료 후 액션
 # ============================================
-def get_prompt_engine() -> PromptEngine:
-    """PromptEngine 싱글톤 인스턴스 반환"""
-    if 'prompt_engine' not in st.session_state:
-        st.session_state.prompt_engine = PromptEngine()
-    return st.session_state.prompt_engine
-
-
-def generate_ai_response(user_input: str, context: Dict, history: str) -> str:
-    """
-    빠른 AI 응답 생성 (앱에서 바로 호출용)
+if conv_manager.get_context()['stage'] == 'complete':
+    st.markdown("---")
+    col1, col2 = st.columns(2)
     
-    Args:
-        user_input: 사용자 메시지
-        context: 컨텍스트
-        history: 대화 히스토리
+    with col1:
+        if st.button("새 상담 시작", use_container_width=True):
+            conv_manager.reset_conversation()
+            st.rerun()
     
-    Returns:
-        AI 응답
-    """
-    engine = get_prompt_engine()
-    return engine.generate_response(user_input, context, history)
+    with col2:
+        if st.button("대화 요약 보기", use_container_width=True):
+            with st.expander("상담 요약", expanded=True):
+                st.markdown(conv_manager.get_summary())
+
+# ============================================
+# 9. 사이드바 (간소화)
+# ============================================
+with st.sidebar:
+    st.markdown(f"<h3 style='color:{COLOR_PRIMARY};'>IMD</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#94A3B8; font-size:12px;'>AI Architecture Group</p>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # 진행도
+    trust = conv_manager.get_context()['trust_level']
+    st.metric("상담 진행도", f"{trust}%")
+    
+    # 개발자 모드 (간소화)
+    if st.checkbox("시스템 정보"):
+        st.json({
+            "messages": len(conv_manager.get_history()),
+            "stage": conv_manager.get_context()['stage'],
+            "user_type": conv_manager.get_context().get('user_type', 'Unknown')
+        })
+
+# ============================================
+# 10. 푸터
+# ============================================
+st.markdown("---")
+st.markdown(
+    f"""
+    <div style='text-align:center; color:#64748B; font-size:11px; padding: 20px 0;'>
+        <b style='color:{COLOR_PRIMARY};'>IMD Architecture Group</b><br>
+        Enterprise AI Solutions | Powered by Gemini 2.0<br>
+        © 2024 Reset Security. All rights reserved.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
