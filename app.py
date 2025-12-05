@@ -3,8 +3,7 @@
 IMD Strategic Consulting - AI Sales Bot (B2B)
 한의원 원장님 대상 AI 실장 시스템 데모
 - 화이트 모드
-- AI 답변 그라데이션 텍스트
-- Gemini 느낌의 "생각 중..." 버블 (타자 애니메이션 없음)
+- AI 답변 부드러운 등장 애니메이션 (검은 글자)
 """
 
 import time
@@ -53,7 +52,7 @@ st.set_page_config(
 )
 
 # ============================================
-# 2. CSS (화이트 모드 + 그라데이션 텍스트 + 생각중 버블)
+# 2. CSS (화이트 모드 + AI 텍스트 애니메이션)
 # ============================================
 st.markdown(
     f"""
@@ -116,18 +115,19 @@ footer {{
 /* AI 메시지 버블 */
 .ai-msg {{
     background: white !important;
-    color: #1F2937 !important;
-    padding: 14px 18px !important;
+    color: #111827 !important;
+    padding: 16px 20px !important;
     border-radius: 18px 18px 18px 4px !important;
-    margin: 16px 0 8px 0 !important;
+    margin: 18px 0 10px 0 !important;
     max-width: 85% !important;
     display: block !important;
-    font-size: 16px !important;
-    line-height: 1.5 !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    font-size: 18px !important;          /* ⬅ 폰트 키움 */
+    line-height: 1.6 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
     border: none !important;
     outline: none !important;
     clear: both !important;
+    animation: fadeInText 0.55s ease-out; /* ⬅ 등장 애니메이션 */
 }}
 
 .ai-msg::before, .ai-msg::after {{
@@ -135,41 +135,40 @@ footer {{
     display: none !important;
 }}
 
-/* AI 답변 텍스트 그라데이션 */
+/* AI 텍스트 (검은색 유지) */
 .ai-text {{
-    background: linear-gradient(135deg, #111827, #2563EB, #0EA5E9);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #111827 !important;
 }}
 
-/* "생각 중..." 버블 */
-.ai-msg.thinking {{
-    background: #F3F4F6 !important;
-    color: #4B5563 !important;
-    padding: 10px 14px !important;
-    border-radius: 16px !important;
-    font-size: 13px !important;
-    box-shadow: none !important;
-    border: 1px dashed #E5E7EB !important;
-    animation: pulse 1.4s ease-in-out infinite;
-}}
-
-@keyframes pulse {{
-    0%   {{ opacity: 0.4; transform: translateY(1px); }}
-    50%  {{ opacity: 1.0; transform: translateY(0); }}
-    100% {{ opacity: 0.4; transform: translateY(1px); }}
+/* 부드러운 그라데이션 느낌의 등장 애니메이션 */
+@keyframes fadeInText {{
+    0% {{
+        opacity: 0;
+        transform: translateY(10px);
+        filter: blur(3px);
+    }}
+    50% {{
+        opacity: 0.7;
+        transform: translateY(3px);
+        filter: blur(1.5px);
+    }}
+    100% {{
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }}
 }}
 
 /* 사용자 메시지 */
 .user-msg {{
     background: {COLOR_USER_BUBBLE} !important;
-    color: #1F2937 !important;
+    color: #111827 !important;
     padding: 12px 18px !important;
     border-radius: 18px 18px 4px 18px !important;
     margin: 8px 0 !important;
     max-width: 70% !important;
     display: inline-block !important;
-    font-size: 15px !important;
+    font-size: 16px !important;
     line-height: 1.4 !important;
     border: none !important;
     outline: none !important;
@@ -287,8 +286,8 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .ai-msg {{
-        font-size: 14px !important;
-        padding: 11px 15px;
+        font-size: 16px !important;
+        padding: 14px 18px !important;
     }}
 }}
 </style>
@@ -307,11 +306,11 @@ lead_handler = LeadHandler()
 if "app_initialized" not in st.session_state:
     initial_msg = (
         "안녕하십니까, 원장님.\n\n"
-        "저는 24시간 잠들지 않는 **AI 상담실장**입니다.\n\n"
+        "저는 24시간 잠들지 않는 <b>AI 상담실장</b>입니다.\n\n"
         "진료실에서 이런 말, 자주 들으시죠?\n\n"
         "\"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요.\"\n\n"
         "그 순간, 진료 동선도 끊기고, 원장님 마음도 같이 꺾이실 겁니다.\n\n"
-        "저는 그 **직전 단계에서**, 환자의 마음을 열고\n"
+        "저는 그 <b>직전 단계에서</b>, 환자의 마음을 열고\n"
         "시술과 프로그램을 받아들일 준비를 시키는 역할을 합니다.\n\n"
         "백문이 불여일견입니다. 지금부터 원장님은 잠시 "
         "'만성 피로 환자' 역할을 해봐 주십시오.\n"
@@ -339,7 +338,7 @@ st.markdown(
 )
 
 # ============================================
-# 5. 채팅 히스토리 출력 (AI는 그라데이션)
+# 5. 채팅 히스토리 출력 (AI는 애니메이션 포함)
 # ============================================
 chat_html = '<div class="chat-area">'
 
@@ -362,7 +361,6 @@ st.markdown(chat_html, unsafe_allow_html=True)
 chat_history = conv_manager.get_history()
 last_msg_is_ai = bool(chat_history and chat_history[-1]["role"] == "ai")
 
-# 대충 6메시지 이상 + 마지막이 AI면 폼 띄우기
 if (
     len(chat_history) >= 6
     and last_msg_is_ai
@@ -415,8 +413,8 @@ if (
 
 {director_name} 원장님, 감사합니다.
 
-**{clinic_name}**에 최적화된 AI 실장 시스템 견적서를  
-**{contact}**로 24시간 내 전송해드리겠습니다.
+<b>{clinic_name}</b>에 최적화된 AI 실장 시스템 견적서를  
+<b>{contact}</b>로 24시간 내 전송해드리겠습니다.
 
 포함 내용:
 - 맞춤형 시스템 구축 비용
@@ -436,7 +434,7 @@ if (
                     st.error(f"오류: {message}")
 
 # ============================================
-# 7. 입력창 + 생각 중 버블
+# 7. 입력창 + AI 응답 (애니메이션만, 별도 버블 없음)
 # ============================================
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
@@ -483,27 +481,11 @@ if user_input:
         st.rerun()
 
     else:
-        # 제미나이 느낌의 "생각 중..." 버블 (타자 효과 없음)
-        thinking_placeholder = st.empty()
-        thinking_html = """
-<div class="chat-area">
-    <div class="ai-msg thinking">
-        AI 수석 실장이 원장님의 상황을 정리하고 있습니다...<br/>
-        · 현재 환자 표현 정리<br/>
-        · 진료/매출 구조에 미치는 영향 상상<br/>
-        · AI가 들어갈 수 있는 지점 계산
-    </div>
-</div>
-"""
-        thinking_placeholder.markdown(thinking_html, unsafe_allow_html=True)
-
-        with st.spinner("분석 중..."):
+        # 여기서는 별도 HTML 버블 없이, 그냥 스피너만 사용
+        with st.spinner("AI 수석 실장이 원장님 상황을 정리하고 있습니다..."):
             ai_response = generate_ai_response(user_input, context, history)
 
-        # 생각 중 버블 제거
-        thinking_placeholder.empty()
-
-        # 실제 답변 추가 (그라데이션으로 렌더링됨)
+        # 실제 답변 추가 (CSS 애니메이션으로 부드럽게 등장)
         conv_manager.add_message("ai", ai_response)
         st.rerun()
 
