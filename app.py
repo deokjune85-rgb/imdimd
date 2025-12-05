@@ -1,200 +1,350 @@
-# app_landing.py (IMD Sales Bot - The Inception)
+# app_landing.py
+"""
+IMD Sales Bot - Main Application
+AI 기반 세일즈 대화형 랜딩 페이지
+"""
+
 import streamlit as st
 import time
-from datetime import datetime
-import gspread
-from google.oauth2.service_account import Credentials
+from conversation_manager import get_conversation_manager
+from prompt_engine import get_prompt_engine, generate_ai_response
+from lead_handler import LeadHandler
+from config import (
+    APP_TITLE,
+    APP_ICON,
+    LAYOUT,
+    COLOR_PRIMARY,
+    COLOR_BG,
+    COLOR_AI_BUBBLE,
+    COLOR_USER_BUBBLE,
+    URGENCY_OPTIONS
+)
 
-# ---------------------------------------
-# 0. 시스템 설정 & 스타일링 (Cyber-Noir)
-# ---------------------------------------
-st.set_page_config(page_title="IMD AI 도입 상담", page_icon="🧠", layout="centered")
+# ============================================
+# 0. 페이지 설정
+# ============================================
+st.set_page_config(
+    page_title=APP_TITLE,
+    page_icon=APP_ICON,
+    layout=LAYOUT
+)
 
-# CSS: 압도적인 몰입감 (검정 배경 + 형광 텍스트)
-custom_css = """
-<style>
-/* 전체 스타일 */
-.stApp { background-color: #000000; font-family: 'Pretendard', sans-serif; color: #ffffff; }
-h1, h2, h3 { color: #00E5FF !important; font-weight: 800; }
-p, div, label, span { color: #eeeeee !important; font-size: 16px; }
+# ============================================
+# 1. CSS 스타일링 (Cyber-Noir)
+# ============================================
+def load_css():
+    """커스텀 CSS 로드"""
+    custom_css = f"""
+    <style>
+    /* 전체 배경 */
+    .stApp {{
+        background-color: {COLOR_BG};
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: white;
+    }}
+    
+    /* 타이틀 */
+    h1, h2, h3 {{
+        color: {COLOR_PRIMARY} !important;
+        font-weight: 800;
+        text-align: center;
+    }}
+    
+    /* 채팅 컨테이너 */
+    .chat-container {{
+        max-width: 700px;
+        margin: 20px auto;
+        padding-bottom: 120px;
+    }}
+    
+    /* AI 메시지 버블 */
+    .chat-bubble-ai {{
+        background-color: {COLOR_AI_BUBBLE};
+        color: white !important;
+        padding: 16px 20px;
+        border-radius: 20px 20px 20px 5px;
+        margin-bottom: 15px;
+        width: fit-content;
+        max-width: 85%;
+        font-size: 16px;
+        line-height: 1.6;
+        border-left: 3px solid {COLOR_PRIMARY};
+        animation: fadeIn 0.5s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }}
+    
+    /* 사용자 메시지 버블 */
+    .chat-bubble-user {{
+        background-color: {COLOR_USER_BUBBLE};
+        color: black !important;
+        padding: 14px 20px;
+        border-radius: 20px 20px 5px 20px;
+        margin-bottom: 15px;
+        margin-left: auto;
+        width: fit-content;
+        max-width: 80%;
+        font-size: 16px;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 229, 255, 0.4);
+    }}
+    
+    /* 애니메이션 */
+    @keyframes fadeIn {{
+        from {{ opacity: 0; transform: translateY(10px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    
+    @keyframes slideIn {{
+        from {{ opacity: 0; transform: translateX(20px); }}
+        to {{ opacity: 1; transform: translateX(0); }}
+    }}
+    
+    /* 추천 버튼 */
+    .stButton > button {{
+        width: 100%;
+        background-color: transparent;
+        color: {COLOR_PRIMARY} !important;
+        border: 2px solid {COLOR_PRIMARY};
+        padding: 14px 20px;
+        font-size: 15px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin-bottom: 10px;
+    }}
+    
+    .stButton > button:hover {{
+        background-color: {COLOR_PRIMARY};
+        color: black !important;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+        transform: scale(1.03);
+    }}
+    
+    /* 입력창 */
+    .stChatInput > div {{
+        background-color: #1a1a1a !important;
+        border: 1px solid {COLOR_PRIMARY} !important;
+    }}
+    
+    input[type="text"], textarea {{
+        background-color: #1a1a1a !important;
+        color: white !important;
+        border: 1px solid #444 !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+    }}
+    
+    /* 폼 스타일 */
+    .stForm {{
+        background-color: #111;
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid {COLOR_PRIMARY};
+    }}
+    
+    /* 타이핑 인디케이터 */
+    .typing-indicator {{
+        display: inline-block;
+        padding: 10px 15px;
+        background-color: {COLOR_AI_BUBBLE};
+        border-radius: 15px;
+        margin-bottom: 10px;
+    }}
+    
+    .typing-indicator span {{
+        height: 8px;
+        width: 8px;
+        background-color: {COLOR_PRIMARY};
+        border-radius: 50%;
+        display: inline-block;
+        margin: 0 2px;
+        animation: bounce 1.4s infinite ease-in-out;
+    }}
+    
+    .typing-indicator span:nth-child(1) {{ animation-delay: -0.32s; }}
+    .typing-indicator span:nth-child(2) {{ animation-delay: -0.16s; }}
+    
+    @keyframes bounce {{
+        0%, 80%, 100% {{ transform: scale(0); }}
+        40% {{ transform: scale(1); }}
+    }}
+    </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
 
-/* 채팅창 스타일 */
-.chat-container {
-    max-width: 700px; margin: auto; padding-bottom: 100px;
-}
-.chat-bubble-ai {
-    background-color: #1a1a1a; color: #fff !important; padding: 15px 20px;
-    border-radius: 20px 20px 20px 5px; margin-bottom: 15px; width: fit-content; max-width: 85%;
-    font-size: 16px; line-height: 1.5; border-left: 3px solid #00E5FF;
-    animation: fadeIn 0.5s ease;
-}
-.chat-bubble-user {
-    background-color: #00E5FF; color: #000 !important; padding: 12px 20px;
-    border-radius: 20px 20px 5px 20px; margin-bottom: 15px; margin-left: auto;
-    width: fit-content; max-width: 80%; font-size: 16px; font-weight: bold;
-    animation: slideIn 0.3s ease; box-shadow: 0 4px 10px rgba(0, 229, 255, 0.3);
-}
+load_css()
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+# ============================================
+# 2. 초기화
+# ============================================
+conv_manager = get_conversation_manager()
+prompt_engine = get_prompt_engine()
+lead_handler = LeadHandler()
 
-/* 버튼 스타일 (선택지) */
-.stButton>button {
-    width: 100%; background-color: #000; color: #00E5FF !important;
-    border: 1px solid #00E5FF; padding: 15px; font-size: 16px; border-radius: 30px; font-weight: bold;
-    transition: all 0.3s;
-}
-.stButton>button:hover {
-    background-color: #00E5FF; color: #000 !important; box-shadow: 0 0 15px rgba(0, 229, 255, 0.5); transform: scale(1.02);
-}
+# 첫 방문 시 웰컴 메시지
+if len(conv_manager.get_history()) == 0:
+    initial_msg = prompt_engine.generate_initial_message()
+    conv_manager.add_message("ai", initial_msg)
 
-/* 입력폼 스타일 */
-input[type="text"] { background-color: #222 !important; color: white !important; border: 1px solid #444 !important; }
-</style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
+# ============================================
+# 3. 헤더
+# ============================================
+st.title("🧠 IMD AI Business Diagnosis")
+st.markdown("<p style='text-align:center; color:#888;'>AI가 직접 설득하는 세일즈 봇 - 실시간 대화 체험</p>", unsafe_allow_html=True)
 
-# ---------------------------------------
-# 1. 리드 수집 로직
-# ---------------------------------------
-def save_lead(data):
-    try:
-        creds_dict = st.secrets["gcp_service_account"].to_dict()
-        scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        sheet = client.open(st.secrets.get("SHEET_NAME", "IMD_DB")).sheet1 
-        row = [datetime.now().isoformat(), data['type'], data['status'], data['name'], data['contact'], "IMD_SALES_BOT"]
-        sheet.append_row(row)
-        return True
-    except: return False
+# ============================================
+# 4. 채팅 히스토리 렌더링
+# ============================================
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
-# ---------------------------------------
-# 2. 대화 상태 관리
-# ---------------------------------------
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = [
-        {"role": "ai", "text": "반갑습니다. <b>IMD 수석 아키텍트 AI</b>입니다.<br>대표님, 솔직히 말씀드리죠.<br><br>지금 <b>마케팅 비용 대비 효율(ROAS)</b>, 만족하시나요?"}
-    ]
-if 'step' not in st.session_state: st.session_state.step = 0
-if 'user_type' not in st.session_state: st.session_state.user_type = ""
-
-# ---------------------------------------
-# 3. 화면 렌더링 (채팅창)
-# ---------------------------------------
-st.title("IMD AI Business Diagnosis")
-
-# 채팅 내역 표시
-for chat in st.session_state.chat_history:
-    role_class = "chat-bubble-ai" if chat['role'] == "ai" else "chat-bubble-user"
+for chat in conv_manager.get_history():
+    role_class = "chat-bubble-ai" if chat['role'] == 'ai' else "chat-bubble-user"
     st.markdown(f'<div class="{role_class}">{chat["text"]}</div>', unsafe_allow_html=True)
 
-# ---------------------------------------
-# 4. 인터랙티브 로직 (The Sales Script)
-# ---------------------------------------
-placeholder = st.empty()
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Step 0: 첫 질문 (효율 만족도)
-if st.session_state.step == 0:
-    with placeholder.container():
-        col1, col2 = st.columns(2)
-        if col1.button("아니요, 불만족스럽습니다 📉"):
-            st.session_state.chat_history.append({"role": "user", "text": "아니요, 돈만 쓰고 효과가 없어서 답답합니다."})
-            st.session_state.step = 1
-            st.rerun()
-        if col2.button("그럭저럭 괜찮습니다 😐"):
-            st.session_state.chat_history.append({"role": "user", "text": "나쁘진 않은데, 더 올리고 싶긴 해요."})
-            st.session_state.step = 1
-            st.rerun()
-
-# Step 1: 업종 확인
-elif st.session_state.step == 1:
-    time.sleep(0.5)
-    if len(st.session_state.chat_history) < 3:
-        st.session_state.chat_history.append({"role": "ai", "text": "대부분의 대표님들이 같은 고민을 하십니다. 광고로 사람을 데려오는 건 쉬워졌지만, <b>'결제'하게 만드는 건 훨씬 어려워졌기 때문이죠.</b><br><br>정확한 진단을 위해, 현재 운영 중인 업종이 어떻게 되시나요?"})
-        st.rerun()
+# ============================================
+# 5. 추천 버튼 (Quick Reply)
+# ============================================
+if not conv_manager.is_ready_for_conversion():
+    st.markdown("---")
+    st.markdown("#### 💬 빠른 선택 (또는 아래 채팅창에 자유롭게 입력하세요)")
     
-    with placeholder.container():
+    buttons = conv_manager.get_recommended_buttons()
+    cols = st.columns(len(buttons))
+    
+    for idx, button_text in enumerate(buttons):
+        with cols[idx]:
+            if st.button(button_text, key=f"quick_{idx}"):
+                # 버튼 클릭 = 사용자 입력으로 처리
+                conv_manager.add_message("user", button_text, metadata={"type": "button"})
+                
+                # AI 응답 생성
+                context = conv_manager.get_context()
+                history = conv_manager.get_formatted_history(for_llm=True)
+                
+                with st.spinner(""):
+                    time.sleep(0.8)  # 타이핑 느낌
+                    ai_response = generate_ai_response(button_text, context, history)
+                
+                conv_manager.add_message("ai", ai_response)
+                st.rerun()
+
+# ============================================
+# 6. 채팅 입력창 (자연어)
+# ============================================
+user_input = st.chat_input("💬 궁금한 점을 자유롭게 물어보세요...")
+
+if user_input:
+    # 사용자 메시지 추가
+    conv_manager.add_message("user", user_input, metadata={"type": "text"})
+    
+    # AI 응답 생성
+    context = conv_manager.get_context()
+    history = conv_manager.get_formatted_history(for_llm=True)
+    
+    with st.spinner(""):
+        time.sleep(1.0)  # 타이핑 시뮬레이션
+        ai_response = generate_ai_response(user_input, context, history)
+    
+    conv_manager.add_message("ai", ai_response)
+    st.rerun()
+
+# ============================================
+# 7. 리드 전환 폼 (적절한 타이밍에 표시)
+# ============================================
+if conv_manager.is_ready_for_conversion() and conv_manager.get_context()['stage'] != 'complete':
+    st.markdown("---")
+    st.markdown("### 🚀 무료 AI 설계도 + 견적 신청")
+    st.markdown("**담당 아키텍트가 24시간 내 연락드립니다**")
+    
+    with st.form("lead_capture_form"):
         col1, col2 = st.columns(2)
-        if col1.button("🏥 병원/의원"):
-            st.session_state.user_type = "병원"
-            st.session_state.chat_history.append({"role": "user", "text": "병원(성형/피부/한의원)을 운영 중입니다."})
-            st.session_state.step = 2
-            st.rerun()
-        if col2.button("🛍️ 쇼핑몰/커머스"):
-            st.session_state.user_type = "쇼핑몰"
-            st.session_state.chat_history.append({"role": "user", "text": "쇼핑몰/브랜드를 운영 중입니다."})
-            st.session_state.step = 2
-            st.rerun()
-
-# Step 2: 페인 포인트 타격 (The Pain)
-elif st.session_state.step == 2:
-    time.sleep(0.5)
-    if len(st.session_state.chat_history) < 5:
-        if st.session_state.user_type == "병원":
-            msg = "병원 마케팅의 핵심은 <b>'상담 전환'</b>입니다.<br>그런데 환자가 밤 10시에 '가격 얼마예요?' 카톡 남기면 누가 답장하나요?<br>직원들은 퇴근했고, 답변이 늦으면 환자는 다른 병원으로 가버립니다."
-        else:
-            msg = "쇼핑몰의 핵심은 <b>'구매 전환'</b>입니다.<br>고객 100명이 들어오면 98명은 그냥 나갑니다(이탈률 98%).<br>왜일까요? 상품이 너무 많아서 뭘 살지 모르기 때문입니다."
+        with col1:
+            name = st.text_input("성함 / 직함 *", placeholder="홍길동 / 대표")
+        with col2:
+            contact = st.text_input("연락처 *", placeholder="010-1234-5678")
         
-        st.session_state.chat_history.append({"role": "ai", "text": msg})
-        st.rerun()
-
-    with placeholder.container():
-        if st.button("맞아요, 그게 제일 문제입니다 🤦‍♂️"):
-            st.session_state.chat_history.append({"role": "user", "text": "맞아요. 그 놓치는 고객들 때문에 매출이 정체되어 있습니다."})
-            st.session_state.step = 3
-            st.rerun()
-
-# Step 3: 솔루션 증명 (The Inception)
-elif st.session_state.step == 3:
-    time.sleep(0.5)
-    if len(st.session_state.chat_history) < 7:
-        st.session_state.chat_history.append({"role": "ai", "text": "<b>지금 저를 보세요.</b> 👀<br><br>저는 사람이 아니라 AI 봇입니다. 하지만 대표님은 저와의 대화에 몰입해서 여기까지 버튼을 누르며 따라오셨습니다.<br><br>만약 제가 대표님의 홈페이지에 심어져 있다면 어떨까요?<br><b>밤새도록 고객을 붙잡고, 설득하고, 상담 예약을 받아낼 겁니다.</b>"})
-        st.rerun()
-
-    with placeholder.container():
-        if st.button("와... 진짜 그렇네요? 😲"):
-            st.session_state.chat_history.append({"role": "user", "text": "듣고 보니 그렇네요. 제가 봇한테 설득당하고 있었군요."})
-            st.session_state.step = 4
-            st.rerun()
-
-# Step 4: 전환 제안 (The Close)
-elif st.session_state.step == 4:
-    time.sleep(0.5)
-    if len(st.session_state.chat_history) < 9:
-        if st.session_state.user_type == "병원":
-            benefit = "<b>야간/주말 예약 건수 30% 증가</b>"
-        else:
-            benefit = "<b>구매 전환율 1.5배 상승</b>"
-            
-        st.session_state.chat_history.append({"role": "ai", "text": f"바로 그겁니다. 😎<br>IMD 아키텍처 그룹은 단순한 챗봇이 아니라, <b>고객을 설득하는 세일즈 AI</b>를 설계합니다.<br><br>이 시스템을 도입하면 {benefit}를 보장합니다.<br>우리 병원/쇼핑몰에 딱 맞는 <b>'AI 설계도'</b>를 무료로 받아보시겠습니까?"})
-        st.rerun()
-
-    with placeholder.container():
-        with st.form("lead_form"):
-            st.markdown("### 🚀 무료 설계도 및 견적 신청")
-            name = st.text_input("성함 / 직함")
-            contact = st.text_input("연락처 (직통)")
-            submit = st.form_submit_button("설계도 받기 (선착순 마감)")
-            
-            if submit:
-                if name and contact:
-                    data = {
-                        "type": st.session_state.user_type,
-                        "status": "Inception Complete",
-                        "name": name,
-                        "contact": contact
-                    }
-                    save_lead(data)
-                    st.session_state.chat_history.append({"role": "ai", "text": f"감사합니다, {name}님! <br>담당 아키텍트가 24시간 내로 분석하여 <b>{contact}</b> 번호로 연락드리겠습니다.<br>이제 매출 걱정은 덜으셔도 됩니다."})
-                    st.session_state.step = 5
+        company = st.text_input("병원명 / 쇼핑몰명 (선택)", placeholder="예: 서울성형외과, ABC쇼핑몰")
+        urgency = st.selectbox("도입 희망 시기 *", URGENCY_OPTIONS)
+        
+        submitted = st.form_submit_button("✅ 무료 설계도 받기", use_container_width=True)
+        
+        if submitted:
+            if not name or not contact:
+                st.error("❌ 성함과 연락처는 필수 입력 항목입니다.")
+            else:
+                # 리드 저장
+                lead_data = {
+                    'user_type': conv_manager.get_context().get('user_type', 'Unknown'),
+                    'stage': 'Lead Converted',
+                    'name': name,
+                    'contact': contact,
+                    'company': company,
+                    'urgency': urgency,
+                    'source': 'IMD_Sales_Bot_V2'
+                }
+                
+                success, message = lead_handler.save_lead(lead_data)
+                
+                if success:
+                    # 완료 메시지
+                    completion_msg = lead_handler.format_lead_message(lead_data)
+                    conv_manager.add_message("ai", completion_msg)
+                    conv_manager.update_stage('complete')
+                    
+                    st.balloons()
+                    time.sleep(1)
                     st.rerun()
                 else:
-                    st.error("연락처를 입력해주세요.")
+                    st.error(f"❌ {message}")
 
-# Step 5: 완료 (End)
-elif st.session_state.step == 5:
-    st.balloons()
-    if st.button("처음으로 돌아가기"):
-        st.session_state.clear()
+# ============================================
+# 8. 하단 액션 (완료 후)
+# ============================================
+if conv_manager.get_context()['stage'] == 'complete':
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🔄 처음부터 다시 시작", use_container_width=True):
+            conv_manager.reset_conversation()
+            st.rerun()
+    
+    with col2:
+        if st.button("📊 대화 요약 보기", use_container_width=True):
+            with st.expander("대화 요약 (관리자용)", expanded=True):
+                st.markdown(conv_manager.get_summary())
+
+# ============================================
+# 9. 사이드바 (옵션)
+# ============================================
+with st.sidebar:
+    st.image("https://via.placeholder.com/150x50/000000/00E5FF?text=IMD", width=150)
+    st.markdown("### 📈 실시간 통계")
+    st.metric("대화 진행도", f"{conv_manager.get_context()['trust_level']}%")
+    st.metric("총 메시지", len(conv_manager.get_history()))
+    
+    st.markdown("---")
+    st.markdown("### ⚙️ 개발자 모드")
+    if st.checkbox("컨텍스트 보기"):
+        st.json(conv_manager.get_context())
+    
+    if st.button("🗑️ 대화 초기화"):
+        conv_manager.reset_conversation()
         st.rerun()
+
+# ============================================
+# 10. 푸터
+# ============================================
+st.markdown("---")
+st.markdown(
+    """
+    <div style='text-align:center; color:#666; font-size:12px;'>
+        Powered by <b>IMD Architecture Group</b> | Gemini 2.0 Flash<br>
+        © 2024 Reset Security. All rights reserved.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
