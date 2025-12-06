@@ -11,12 +11,8 @@ from typing import Any
 
 import streamlit as st
 
-from conversation_manager import get_conversation_manager
-from prompt_engine import get_prompt_engine, generate_ai_response
-from lead_handler import LeadHandler
-
 # ============================================
-# 0. config 안전 로딩
+# 0. config 안전 로딩 (먼저 로드)
 # ============================================
 try:
     import config as cfg
@@ -43,6 +39,11 @@ COLOR_BORDER = _get("COLOR_BORDER", "#E5E7EB")
 
 SYMPTOM_CARDS = _get("SYMPTOM_CARDS", {})
 TONGUE_TYPES = _get("TONGUE_TYPES", {})
+
+# 모듈 import (config 로드 후)
+from conversation_manager import get_conversation_manager
+from prompt_engine import get_prompt_engine, generate_ai_response
+from lead_handler import LeadHandler
 
 # ============================================
 # 1. 페이지 설정
