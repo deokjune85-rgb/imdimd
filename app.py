@@ -108,6 +108,40 @@ footer {{
     margin-top: 4px;
 }}
 
+/* 채팅 메시지 스타일 강제 */
+[data-testid="stChatMessage"] {{
+    background: white !important;
+    padding: 16px !important;
+    border-radius: 12px !important;
+    margin: 8px 0 !important;
+}}
+
+/* 이모지 아바타 제거 */
+[data-testid="stChatMessageAvatarAssistant"],
+[data-testid="stChatMessageAvatarUser"] {{
+    display: none !important;
+}}
+
+/* 글자 색상 검정 */
+[data-testid="stChatMessage"] p {{
+    color: #1F2937 !important;
+    font-size: 18px !important;
+    line-height: 1.6 !important;
+}}
+
+/* AI 메시지 배경 */
+[data-testid="stChatMessageAssistant"] {{
+    background: #F9FAFB !important;
+    border: 1px solid #E5E7EB !important;
+}}
+
+/* User 메시지 배경 */
+[data-testid="stChatMessageUser"] {{
+    background: #E5E7EB !important;
+    margin-left: auto !important;
+    max-width: 80% !important;
+}}
+
 /* 채팅 영역 */
 .chat-area {{
     padding: 12px 20px 4px 20px;
