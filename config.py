@@ -56,7 +56,7 @@ SYMPTOM_CARDS = {
 # ============================================
 TONGUE_TYPES = {
     '담백설': {
-        'emoji': '⚪',
+        'emoji': 'images/pale_tongue.png',
         'name': '담백설 (淡白舌)',
         'visual': '핏기 없고 하얀 혀',
         'analysis': '혀가 창백하고 핏기가 없습니다. 이는 **기혈(氣血) 부족**의 대표적인 신호입니다.',
@@ -71,7 +71,7 @@ TONGUE_TYPES = {
         }
     },
     '치흔설': {
-        'emoji': '🦷',
+        'emoji': 'images/tooth_tongue.png',
         'name': '치흔설 (齒痕舌)',
         'visual': '가장자리에 이빨 자국이 선명한 혀',
         'analysis': '혀 가장자리에 **톱니바퀴 같은 이빨 자국(치흔)**이 선명합니다. 이것은 단순 피로가 아닙니다.',
@@ -86,7 +86,7 @@ TONGUE_TYPES = {
         }
     },
     '황태설': {
-        'emoji': '🟡',
+        'emoji': 'images/yellow_tongue.png',
         'name': '황태설 (黃苔舌)',
         'visual': '누런 태가 두껍게 낀 혀',
         'analysis': '혀에 **누런 태(황태)**가 두껍게 껴 있습니다. 이는 **열독(熱毒)**이 체내에 쌓인 신호입니다.',
@@ -101,7 +101,7 @@ TONGUE_TYPES = {
         }
     },
     '자색설': {
-        'emoji': '🟣',
+        'emoji': 'images/purple_tongue.png',
         'name': '자색설 (紫色舌)',
         'visual': '검붉거나 자주색을 띠는 혀',
         'analysis': '혀가 **검붉은 자주색**을 띠고 있습니다. 이는 **어혈(瘀血)**, 즉 혈액순환 장애의 적신호입니다.',
