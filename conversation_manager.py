@@ -222,6 +222,16 @@ class ConversationManager:
         """
         st.session_state.user_context['stage'] = new_stage
     
+    def update_context(self, key: str, value):
+        """
+        사용자 컨텍스트 업데이트
+        
+        Args:
+            key: 컨텍스트 키 (예: 'selected_tongue', 'selected_symptom')
+            value: 업데이트할 값
+        """
+        st.session_state.user_context[key] = value
+    
     def reset_conversation(self):
         """대화 초기화 (처음부터 다시)"""
         st.session_state.chat_history = []
