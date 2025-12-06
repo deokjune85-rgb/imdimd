@@ -448,16 +448,14 @@ st.markdown(
 )
 
 # ============================================
-# 5. 채팅 히스토리 출력 (인터리브 방식)
+# 5. 채팅 히스토리 출력 (개별 컴포넌트 방식)
 # ============================================
-chat_html = '<div class="chat-area">'
+st.markdown('<div class="chat-area">', unsafe_allow_html=True)
 
 for idx, msg in enumerate(conv_manager.get_history()):
     if msg["role"] == "ai":
-        # AI 메시지
-        chat_html += (
-            f'<div class="ai-msg">{msg["text"]}</div>'
-        )
+        # AI 메시지 (개별 출력)
+        st.markdown(f'<div class="ai-msg">{msg["text"]}</div>', unsafe_allow_html=True)
         
         # 혀 선택 직후 AI 메시지라면 선택된 사진 크게 표시
         if idx > 0 and st.session_state.get("selected_tongue_type"):
@@ -476,14 +474,15 @@ for idx, msg in enumerate(conv_manager.get_history()):
                             unsafe_allow_html=True
                         )
                         st.image(image_path, use_container_width=True)
-        
+    
     elif msg["role"] == "user":
-        # 환자(원장) 메시지 - 흰색 카드
-        chat_html += (
+        # 환자(원장) 메시지 - 흰색 카드 (개별 출력)
+        st.markdown(
             f'<div class="msg-right">'
             f'<div class="patient-card">'
             f'<div class="patient-text">{msg["text"]}</div>'
-            f'</div></div>'
+            f'</div></div>',
+            unsafe_allow_html=True
         )
         
         # 사용자 메시지 바로 다음에 AI 분석 로그 삽입
@@ -491,7 +490,7 @@ for idx, msg in enumerate(conv_manager.get_history()):
         
         # 첫 번째 메시지: 증상 파악
         if idx == 1 and st.session_state.conversation_count >= 1:
-            chat_html += """
+            st.markdown("""
 <div class="admin-log">
     <span class="log-header">🎯 AI SYSTEM LOG</span>
     <div class="log-msg">
@@ -500,11 +499,11 @@ for idx, msg in enumerate(conv_manager.get_history()):
         → 다음 단계: 소화기능 및 수면패턴 추적 필요
     </div>
 </div>
-"""
+""", unsafe_allow_html=True)
         
         # 두 번째 메시지: 변증 심화
         elif idx == 3 and st.session_state.conversation_count >= 2:
-            chat_html += """
+            st.markdown("""
 <div class="admin-log">
     <span class="log-header">📊 DEEP ANALYSIS</span>
     <div class="log-msg">
@@ -514,11 +513,11 @@ for idx, msg in enumerate(conv_manager.get_history()):
         → 설진(혀 진단)으로 확증 필요
     </div>
 </div>
-"""
+""", unsafe_allow_html=True)
         
         # 세 번째 메시지: 클로징 준비
         elif idx >= 5 and st.session_state.conversation_count >= 3:
-            chat_html += """
+            st.markdown("""
 <div class="admin-log" style="border: 2px solid #059669;">
     <span class="log-header" style="color:#059669;">💡 SALES OPPORTUNITY</span>
     <div class="log-msg">
@@ -529,21 +528,22 @@ for idx, msg in enumerate(conv_manager.get_history()):
         동의율 <b>80% 이상</b>으로 상승
     </div>
 </div>
-"""
+""", unsafe_allow_html=True)
 
-chat_html += "</div>"
-st.markdown(chat_html, unsafe_allow_html=True)
+# 채팅 영역 종료
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ============================================
-# 6. CTA 폼 (시뮬레이션 끝난 후 자동 노출)
+# 6. CTA 폼 (closing 모드 또는 conversion 단계에서 표시)
 # ============================================
-chat_history = conv_manager.get_history()
-last_msg_is_ai = bool(chat_history and chat_history[-1]["role"] == "ai")
+current_stage = conv_manager.get_context().get("stage", "")
+current_mode = st.session_state.get("mode", "simulation")
 
 if (
-    len(chat_history) >= 6
-    and last_msg_is_ai
-    and conv_manager.get_context()["stage"] != "complete"
+    current_mode == "closing" 
+    or current_stage == "conversion"
+    or (len(conv_manager.get_history()) >= 6 and current_stage != "complete")
 ):
     st.markdown("---")
     st.markdown(
