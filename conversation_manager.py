@@ -1,4 +1,3 @@
-# conversation_manager.py
 """
 IMD Sales Bot - Conversation State Management
 대화 히스토리, 컨텍스트, 사용자 의도 관리
