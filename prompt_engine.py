@@ -31,7 +31,9 @@ except ImportError:
 # -----------------------------
 # 전역 상태
 # -----------------------------
+# 네가 쓰고 싶은 모델 이름
 MODEL_NAME: str = "gemini-2.0-flash"
+
 _api_key_source: str = "none"
 _init_error: str = ""
 _model = None
@@ -247,11 +249,13 @@ def _call_llm(
 ) -> str:
     """
     Gemini 호출.
-    - 라이브러리/키/모델 문제면 디버그 텍스트를 그대로 반환 (멈추지 않게).
 
-    ※ 중요: Gemini 2.0은 role='system' 메시지를 contents에 넣지 않는다.
-      system_instruction 인자로만 넘긴다.
+    ※ 버전 꼬임 방지:
+    - system role 안 씀
+    - system_instruction 인자도 안 씀
+    - 그냥 문자열 하나로 generate_content() 호출
     """
+
     # 0) 라이브러리/키/모델 체크
     if genai is None:
         return (
@@ -285,10 +289,8 @@ def _call_llm(
         )
         return msg + "\n[[STAGE:initial]]"
 
-    # 1) contents 구성 (system role 절대 넣지 않음)
-    contents: List[Dict[str, Any]] = []
-
-    # history: conv_manager.get_formatted_history(for_llm=True) 결과
+    # 1) 지금까지 히스토리를 텍스트로 평탄화
+    history_text_lines: List[str] = []
     for msg in history:
         if isinstance(msg, dict):
             role_raw = msg.get("role", "ai")
@@ -302,20 +304,34 @@ def _call_llm(
         if not text:
             continue
 
-        # Gemini 쪽 role: "user" 또는 "model"
-        g_role = "user" if role_raw == "user" else "model"
-        contents.append({"role": g_role, "parts": [text]})
+        if role_raw == "user":
+            prefix = "원장님:"
+        else:
+            prefix = "AI:"
+        history_text_lines.append(f"{prefix} {text}")
 
-    # 마지막 유저 발화
-    contents.append({"role": "user", "parts": [user_input]})
+    history_block = "\n".join(history_text_lines).strip()
 
-    # 2) LLM 호출
+    # 2) 제미나이에 넘길 최종 프롬프트 하나 만들기
+    combined_prompt = f"""
+{system_instruction}
+
+[지금까지의 대화]
+{history_block if history_block else "기존 대화 없음"}
+
+[원장님(사용자)의 최신 발화]
+원장님: {user_input}
+
+위 히스토리와 현재 단계 설명을 참고해서,
+원장님께 단계에 맞는 상담 답변을 해주세요.
+반드시 마지막 줄은 [[STAGE:단계이름]] 형식으로 끝내세요.
+"""
+
+    # 3) LLM 호출 (버전 호환을 위해 문자열 하나만 전달)
     try:
-        res = _model.generate_content(
-            contents=contents,
-            system_instruction=system_instruction,
-        )
-        text = (res.text or "").strip()
+        # 대부분 버전에서 문자열 하나를 인자로 넣으면 자동 처리됨
+        res = _model.generate_content(combined_prompt)
+        text = (getattr(res, "text", None) or "").strip()
 
         if not text:
             raise ValueError("empty response")
