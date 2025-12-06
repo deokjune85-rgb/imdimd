@@ -218,43 +218,74 @@ input::placeholder, textarea::placeholder {{
 /* 모바일 */
 @media (max-width: 768px) {{
     .main .block-container {{
-        padding-top: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
     }}
     
     .title-box {{
-        padding: 2px 16px 2px 16px !important;
+        padding: 8px 8px 8px 8px !important;
     }}
     
     .title-box h1 {{
-        font-size: 26px !important;
+        font-size: 22px !important;
         line-height: 1.1 !important;
     }}
     
     .chat-area {{
-        padding: 2px 16px 4px 16px !important;
+        padding: 8px 8px 4px 8px !important;
     }}
     
     .ai-msg {{
-        font-size: 18px !important;
-        padding: 11px 15px;
+        font-size: 16px !important;
+        padding: 10px 12px !important;
     }}
     
-    /* 모바일에서도 혀 사진 4개 가로 배열 강제 */
-    [data-testid="column"] {{
+    .user-msg {{
+        font-size: 15px !important;
+    }}
+    
+    /* 모바일에서 혀 사진 4개 가로 배열 강제 */
+    div[data-testid="stHorizontalBlock"] {{
+        gap: 4px !important;
+    }}
+    
+    div[data-testid="column"] {{
         min-width: 0 !important;
-        flex: 1 1 25% !important;
-        padding: 0 4px !important;
+        flex: 0 0 23% !important;
+        max-width: 25% !important;
+        padding: 0 2px !important;
     }}
     
-    [data-testid="column"] img {{
+    div[data-testid="column"] > div {{
+        padding: 0 !important;
+    }}
+    
+    div[data-testid="column"] img {{
         width: 100% !important;
         height: auto !important;
+        margin-bottom: 2px !important;
     }}
     
-    [data-testid="column"] button {{
-        font-size: 11px !important;
-        padding: 6px 4px !important;
-        margin-top: 4px !important;
+    div[data-testid="column"] button {{
+        font-size: 10px !important;
+        padding: 4px 2px !important;
+        margin-top: 2px !important;
+        white-space: nowrap !important;
+    }}
+    
+    div[data-testid="column"] div[style*="text-align:center"] {{
+        font-size: 10px !important;
+        margin: 2px 0 !important;
+    }}
+    
+    /* 입력창 여백 제거 */
+    .stChatInput {{
+        padding: 10px 4px !important;
+    }}
+    
+    .stChatInput > div {{
+        max-width: 100% !important;
+        margin: 0 4px !important;
     }}
 }}
 
