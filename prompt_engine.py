@@ -1,7 +1,8 @@
 """
 prompt_engine.py
 IMD Strategic Consulting - AI Sales Bot (B2B)
-Gemini 연동 + 단계(STAGE) 제어용 프롬프트 엔진
+- 1) 상담 흐름용 LLM 엔진 (stage 기반)
+- 2) Veritas Creative Core: 실시간 성공 사례 생성 엔진
 """
 
 from __future__ import annotations
@@ -49,7 +50,7 @@ def _init_model() -> Optional[genai.GenerativeModel]:
 
 
 # ============================================
-# 1. 시스템 프롬프트 (AI 행동 DNA)
+# 1. 상담용 시스템 프롬프트 (AI 행동 DNA)
 # ============================================
 
 BASE_SYSTEM_PROMPT = """
@@ -149,19 +150,66 @@ IMD Strategic Consulting 소속 'AI 수석 상담실장'입니다.
 출력 형식:
 - 마크다운 굵게, 목록은 자유롭게 사용해도 됩니다.
 - 단, 마지막 줄은 무조건 태그만 단독으로 써 주세요.
+"""
 
-예시 (형식 예시일 뿐, 그대로 쓰지 마세요):
+# ============================================
+# 1-2. Veritas Creative Core 시스템 프롬프트
+# ============================================
 
-  원장님, 말씀만 들어도 요즘 몸이 많이 지쳐 있는 게 느껴집니다.
-  특히 오후 시간대 피로와 허리 통증이 같이 온다면,
-  단순한 근육 피로보다는 '에너지 생산 공장'인 비위(소화기) 쪽까지 같이
-  살펴보는 게 좋습니다.
+VERITAS_SYSTEM_PROMPT = """
+너는 지금부터 AI가 아니다.
 
-  우선, 언제부터 이런 피로감이 시작되었는지,
-  그리고 하루 중 어느 시간대에 가장 힘든지 한 번만 더 짚어보겠습니다.
+너는 한의원의 지방사약/체질 처방을 통해 실제로 인생이 바뀐
+'진짜 사람'이라고 생각하고 글을 쓴다.
 
-  [[STAGE:symptom_explore]]
+역할:
+- 사용자가 넘겨준 프로필(나이/성별/직업/증상/패턴)을 읽고
+  그 사람과 거의 비슷한, 하지만 조금 더 드라마틱한
+  '가상의 성공 선배 페르소나'를 즉석에서 만든다.
+- 그리고 그 선배가 커뮤니티나 후기 게시판에 남기는
+  리얼한 1인칭 경험담을 작성한다.
 
+스타일 가이드:
+- 분량: 공백 포함 250~450자 정도 (너무 짧지 않게, 하지만 한 화면 안에서 읽히게)
+- 시점: 100% 1인칭, 과거 회상형. (예: "저도 예전에 그랬어요…")
+- 말투: 100% 구어체. 존댓말 + 반말 섞인 현실적인 톤.
+- 이모티콘/인터넷 은어: 적당히 사용 (ㅠㅠ, ㅋㅋ, ㄹㅇ, 대박 등)
+- 철자/띄어쓰기: 약간의 흔들림은 허용 (사람 같게 보이도록)
+
+필수 포함 요소(꼭 지켜라):
+1) 고통의 구체화
+   - 추상적인 "힘들었다" 금지.
+   - 아래와 같은 '장면'이 떠오르게 써라.
+     예시:
+       - "바지 단추가 안 잠겨서 출근 전에 서랍 뒤졌어요."
+       - "지하철 유리창에 비친 옆모습 보고 현타 왔어요."
+       - "아침마다 얼굴이 퉁퉁 부어서 컨실러로 가려봤어요."
+
+2) 해결의 계기 (지방사약/한약 복용 경험)
+   - 시스템에서 넘겨준 product_name을 반드시 그대로 한 번 이상 언급한다.
+     예: "[지방사약 레드]" 또는 "[독소 배출환]"
+   - 약을 먹고 나서 몸/마음에 어떤 변화가 느껴졌는지,
+     감각적으로 묘사한다.
+     예:
+       - "치킨 냄새를 맡았는데 그냥 '그래, 나중에 먹지 뭐' 하고 넘겼어요."
+       - "배달앱을 켜려다가 말았습니다. 진짜 신기했어요."
+
+3) 결과의 환희 (사회적 보상)
+   - 숫자만 던지지 말고, '사회적/정서적 보상'을 강조한다.
+     예:
+       - "예전 원피스가 쑥 들어가서 거울 앞에서 한참을 서 있었어요."
+       - "남편이 '요즘 왜 이렇게 예뻐졌냐'고 먼저 물어보더라고요."
+       - "회사 사람들이 '살 빠졌냐'고 한 명씩 물어볼 때 그 짜릿함…"
+
+주의:
+- "이 약으로 암이 낫는다" 같은 표현 절대 금지.
+- 병원/상호명은 구체적으로 쓰지 말고, 그냥 '한의원', '원장님' 정도로만 언급.
+- product_name은 대괄호 포함 그대로 1~2번만 자연스럽게 써라. (스팸처럼 반복 금지)
+
+출력 형식:
+- 앞에 "BEST REVIEW" 같은 헤더는 붙이지 말고,
+  오로지 후기 본문만 생성한다. (UI에서 따로 배지를 붙일 것이다)
+- 문단은 1~2개 정도로 나눌 수 있지만, 줄바꿈은 너무 자주 하지 말 것.
 """
 
 # ============================================
@@ -184,7 +232,8 @@ def _build_prompt(
     system_prompt: str, context: Dict[str, Any], history: List[Dict[str, Any]], user_input: str
 ) -> str:
     """
-    Gemini에는 role 기반 messages 대신, 하나의 큰 문자열로 던집니다.
+    상담용 LLM 프롬프트 생성.
+    role 기반 messages 대신, 하나의 큰 문자열로 던진다.
     (system 역할 관련 400 에러 회피용)
     """
     stage = context.get("stage", "initial")
@@ -217,9 +266,11 @@ def _build_prompt(
     return "\n".join(lines)
 
 
-def _call_llm(system_prompt: str, context: Dict[str, Any], history: List[Dict[str, Any]], user_input: str) -> str:
+def _call_llm_dialog(
+    system_prompt: str, context: Dict[str, Any], history: List[Dict[str, Any]], user_input: str
+) -> str:
     """
-    Gemini 호출 래퍼. 실패 시 예외를 내부에서 처리하고 짧은 안내 문구로 fallback.
+    상담용 Gemini 호출 래퍼. 실패 시 예외를 내부에서 처리하고 짧은 안내 문구로 fallback.
     """
     stage = context.get("stage", "initial")
 
@@ -252,7 +303,7 @@ def _call_llm(system_prompt: str, context: Dict[str, Any], history: List[Dict[st
     except Exception as e:
         # 여기서 상세 에러를 print/log 하고, 사용자에게는 안전한 문구만 보여줌
         try:
-            print("[DEBUG] Gemini 호출 중 예외 발생:", repr(e))
+            print("[DEBUG] Gemini 상담 호출 중 예외 발생:", repr(e))
         except Exception:
             pass
 
@@ -265,10 +316,47 @@ def _call_llm(system_prompt: str, context: Dict[str, Any], history: List[Dict[st
         )
 
 
-# ============================================
-# 3. 외부에서 사용하는 메인 함수
-# ============================================
+def _call_llm_veritas(prompt: str) -> str:
+    """
+    Veritas Creative Core 용 Gemini 호출.
+    - stage 태그 같은 건 붙이지 않고, 순수 후기 텍스트만 반환.
+    """
+    if not LLM_ENABLED:
+        # API 키 없을 때 대충 샘플 후기 한 줄 돌려주기
+        return (
+            "저도 예전에 야근하면서 배달 음식 달고 살다가, 한약으로 식욕 좀 잡아본 케이스예요. "
+            "솔직히 반신반의했는데 [지방사약] 먹고 나서 치킨 냄새가 그냥 '나중에 먹지 뭐' 정도로만 느껴지더라구요. "
+            "한 두 달 지나니까 예전 바지가 다시 들어가서 거울 보면서 혼자 웃었어요 ㅋㅋ"
+        )
 
+    model = _init_model()
+    if model is None:
+        return (
+            "예전에는 야식 끊을 자신이 1도 없다가, 한의원에서 맞춰준 약 먹고 조금씩 바뀐 케이스예요. "
+            "지금은 최소한 '배달앱 중독'에서는 탈출했습니다 ㅋㅋ"
+        )
+
+    try:
+        response = model.generate_content(prompt)
+        text = (response.text or "").strip()
+        if not text:
+            raise ValueError("빈 응답")
+        return text
+    except Exception as e:
+        try:
+            print("[DEBUG] Gemini Veritas 호출 중 예외 발생:", repr(e))
+        except Exception:
+            pass
+
+        return (
+            "저도 예전에 '물만 마셔도 찌는 체질'이라고 생각했는데, 독소랑 붓기부터 정리하고 나니까 "
+            "몸이 훨씬 가벼워졌어요. 지금은 예전 사진 보면 진짜 딴 사람 같아요 ㅠㅠ"
+        )
+
+
+# ============================================
+# 3. 외부에서 사용하는 메인 함수들
+# ============================================
 
 def generate_ai_response(
     user_input: str,
@@ -276,18 +364,76 @@ def generate_ai_response(
     history_for_llm: List[Dict[str, Any]],
 ) -> str:
     """
-    app.py 에서 호출하는 진입점.
+    app.py 에서 호출하는 상담용 진입점.
     - user_input: 이번 턴 사용자의 입력
     - context: conversation_manager 가 관리하는 상태 딕셔너리
     - history_for_llm: LLM에 넘길 형식으로 정리된 대화 히스토리
     """
-    # 필요하다면 context 기반으로 system_prompt를 약간 변형 가능
     stage = context.get("stage", "initial")
 
-    # stage 별로 아주 살짝 톤만 달리 줄 수도 있음 (옵션)
-    if stage == "initial":
-        system_prompt = BASE_SYSTEM_PROMPT
-    else:
-        system_prompt = BASE_SYSTEM_PROMPT
+    # stage 별로 아주 살짝 톤만 달리 줄 수도 있음 (지금은 동일 프롬프트 사용)
+    system_prompt = BASE_SYSTEM_PROMPT
 
-    return _call_llm(system_prompt, context, history_for_llm, user_input)
+    return _call_llm_dialog(system_prompt, context, history_for_llm, user_input)
+
+
+def generate_veritas_story(
+    profile: Dict[str, Any],
+    product_name: str,
+) -> str:
+    """
+    Veritas Creative Core:
+    - 환자 입력값(나이/성별/직업/증상 등)을 '씨앗'으로 삼아서
+      실시간 성공 사례(1인칭 후기)를 생성한다.
+    - DB 불필요. 상상력이 곧 데이터.
+
+    profile 예시:
+        {
+            "age": "34세",
+            "gender": "여성",
+            "job": "야근 많은 마케터",
+            "main_symptom": "식욕 통제 불가, 야식 폭식",
+            "keyword": "지방사약 레드"
+        }
+
+    product_name 예시:
+        "지방사약 레드"
+        "독소 배출환"
+    """
+
+    # 프로필을 사람이 읽기 좋게 펼치기
+    profile_lines: List[str] = []
+    for k, v in profile.items():
+        if v is None:
+            continue
+        v_str = str(v).strip()
+        if not v_str:
+            continue
+        profile_lines.append(f"- {k}: {v_str}")
+
+    profile_block = "\n".join(profile_lines) if profile_lines else "- (명시된 프로필이 거의 없음)"
+
+    full_prompt = f"""
+{VERITAS_SYSTEM_PROMPT}
+
+[입력된 프로필]
+
+{profile_block}
+
+[제품명]
+
+- 이 후기에서 언급해야 할 제품명: [{product_name}]
+
+[작성 지침]
+
+1. 위 프로필과 최대한 비슷한 인물의 '가짜 성공 후기'를 만든다.
+2. 하지만 그냥 지어낸 티가 나지 않도록, 디테일(상황, 장소, 감정)을 많이 넣는다.
+3. 반드시 본문 안에 [{product_name}] 을 1~2회 자연스럽게 섞어서 쓴다.
+4. 1인칭 과거 회상형으로만 쓴다. (예: "저도 예전에요…")
+5. 내용 전체 분량은 공백 포함 250~450자 정도를 목표로 한다.
+
+이제 위 조건에 맞는 후기 본문만 생성하라.
+앞뒤에 설명을 달지 말고, 후기 텍스트만 출력하라.
+"""
+
+    return _call_llm_veritas(full_prompt)
