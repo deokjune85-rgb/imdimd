@@ -325,7 +325,18 @@ with st.container():
 # 혀 사진 선택 (digestion_check 단계 후 표시)
 # ============================================
 context = conv_manager.get_context()
-if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
+chat_history = conv_manager.get_history()
+
+# digestion_check이고, 혀 미선택이고, 마지막 메시지에 "거울" 또는 "혀" 포함 시에만 UI 표시
+show_tongue_ui = (
+    context.get('stage') == 'digestion_check' 
+    and not context.get('selected_tongue')
+    and chat_history 
+    and chat_history[-1]['role'] == 'ai'
+    and ('거울' in chat_history[-1]['text'] or '혀' in chat_history[-1]['text'])
+)
+
+if show_tongue_ui:
     with st.container():
         st.markdown(
             f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:4px 0 8px 0;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
@@ -414,9 +425,10 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 chat_history = conv_manager.get_history()
 last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
 current_stage = conv_manager.get_context()['stage']
+selected_tongue = conv_manager.get_context().get('selected_tongue')
 
-# conversion 단계이거나 6회 이상 대화 시 CTA 표시
-if (current_stage == 'conversion' or (len(chat_history) >= 6 and last_msg_is_ai)) and current_stage != 'complete':
+# conversion 단계이고 혀를 선택했을 때만 CTA 표시
+if current_stage == 'conversion' and selected_tongue and current_stage != 'complete':
     with st.container():
         st.markdown("---")
         st.markdown(
