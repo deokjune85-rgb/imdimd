@@ -450,8 +450,6 @@ for idx, msg in enumerate(conv_manager.get_history()):
     <div style="margin-top: 10px; font-size: 15px; color: #6B7280; font-weight: 600;">선택하신 혀: {info['name']}</div>
 </div>
 """
-                    # 한 번만 표시하고 플래그 제거
-                    st.session_state.selected_tongue_type = None
         
     elif msg["role"] == "user":
         # 환자(원장) 메시지 - 흰색 카드
@@ -630,28 +628,37 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
                 analysis_msg = f"""
-<b>{info['name']}</b>을 선택하셨군요.
+<b>보셨습니까 원장님?</b>
+
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
 
 {info['analysis']}
 
-주요 증상: {info['symptoms']}
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
 
-<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
 
-환자분, 이건 쉬어서 낫는 단계가 지났습니다.
-하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
 
-이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
 
-<b>지금 필요한 것은:</b>
-1. 막힌 순환을 뚫어주는 약침 치료
-2. 고갈된 원기를 채우는 녹용/공진단
-3. 최소 3개월간의 집중 면역 프로그램
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
 
-원장님께 제가 미리 언질을 드려놓을까요?
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("solution")
+                conv_manager.update_stage("conversion")
+                st.session_state.mode = "closing"
                 st.rerun()
         
         # 황태설
@@ -675,28 +682,37 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
                 analysis_msg = f"""
-<b>{info['name']}</b>을 선택하셨군요.
+<b>보셨습니까 원장님?</b>
+
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
 
 {info['analysis']}
 
-주요 증상: {info['symptoms']}
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
 
-<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
 
-환자분, 이건 쉬어서 낫는 단계가 지났습니다.
-하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
 
-이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
 
-<b>지금 필요한 것은:</b>
-1. 막힌 순환을 뚫어주는 약침 치료
-2. 고갈된 원기를 채우는 녹용/공진단
-3. 최소 3개월간의 집중 면역 프로그램
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
 
-원장님께 제가 미리 언질을 드려놓을까요?
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("solution")
+                conv_manager.update_stage("conversion")
+                st.session_state.mode = "closing"
                 st.rerun()
     
     with col2:
@@ -721,29 +737,39 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
                 analysis_msg = f"""
-<b>{info['name']}</b>을 선택하셨군요.
+<b>보셨습니까 원장님?</b>
 
-{info['analysis']}
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
 
-주요 증상: {info['symptoms']}
-
-<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
-
-보이시나요? 혀 가장자리가 울퉁불퉁하죠?
+혀 가장자리가 울퉁불퉁하죠? 
 혀가 부어서 이빨에 눌린 자국입니다.
-몸이 물 먹은 솜처럼 퉁퉁 불어 순환이 막혔다는 명백한 증거입니다.
+<b>몸이 물 먹은 솜처럼 퉁퉁 불어 순환이 막혔다는 명백한 증거</b>입니다.
 
-이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
 
-<b>지금 필요한 것은:</b>
-1. 막힌 순환을 뚫어주는 약침 치료
-2. 고갈된 원기를 채우는 녹용/공진단
-3. 최소 3개월간의 집중 면역 프로그램
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
 
-원장님께 제가 미리 언질을 드려놓을까요?
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
+
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
+
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
+
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("solution")
+                conv_manager.update_stage("conversion")
+                st.session_state.mode = "closing"
                 st.rerun()
         
         # 자색설
@@ -767,28 +793,39 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
                 analysis_msg = f"""
-<b>{info['name']}</b>을 선택하셨군요.
+<b>보셨습니까 원장님?</b>
+
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
 
 {info['analysis']}
 
-주요 증상: {info['symptoms']}
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
 
-<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+환자는 이제 자신의 몸이 <b>"쉬어서 낫는 단계가 아니다"</b>는 걸 알았습니다.
 
-환자분, 이건 쉬어서 낫는 단계가 지났습니다.
-하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
 
-이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
 
-<b>지금 필요한 것은:</b>
-1. 막힌 순환을 뚫어주는 약침 치료
-2. 고갈된 원기를 채우는 녹용/공진단
-3. 최소 3개월간의 집중 면역 프로그램
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
 
-원장님께 제가 미리 언질을 드려놓을까요?
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
+
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("solution")
+                conv_manager.update_stage("conversion")
+                st.session_state.mode = "closing"
                 st.rerun()
 
 # 일반 텍스트 입력
@@ -805,33 +842,43 @@ if user_input:
     # 혀 타입이 감지되고 현재 혀 선택 단계라면
     if detected_tongue and current_stage == "tongue_select":
         st.session_state.tongue_selected = True
+        st.session_state.selected_tongue_type = detected_tongue
         conv_manager.update_context("selected_tongue", detected_tongue)
         conv_manager.add_message("user", f"[선택: {user_input}]")
         
         info = TONGUE_TYPES[detected_tongue]
         analysis_msg = f"""
-<b>{info['name']}</b>을 선택하셨군요.
+<b>보셨습니까 원장님?</b>
+
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
 
 {info['analysis']}
 
-주요 증상: {info['symptoms']}
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
 
-<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
 
-환자분, 이건 쉬어서 낫는 단계가 지났습니다.
-하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
 
-이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
 
-<b>지금 필요한 것은:</b>
-1. 막힌 순환을 뚫어주는 약침 치료
-2. 고갈된 원기를 채우는 녹용/공진단
-3. 최소 3개월간의 집중 면역 프로그램
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
 
-원장님께 제가 미리 언질을 드려놓을까요?
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
         conv_manager.add_message("ai", analysis_msg)
-        conv_manager.update_stage("solution")
+        conv_manager.update_stage("conversion")
+        st.session_state.mode = "closing"
         st.rerun()
         st.stop()
     
