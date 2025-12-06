@@ -413,9 +413,10 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 # ============================================
 chat_history = conv_manager.get_history()
 last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
+current_stage = conv_manager.get_context()['stage']
 
-# 시뮬레이션 완료 판단 (6회 이상 대화 + AI 답변으로 끝)
-if len(chat_history) >= 6 and last_msg_is_ai and conv_manager.get_context()['stage'] != 'complete':
+# conversion 단계이거나 6회 이상 대화 시 CTA 표시
+if (current_stage == 'conversion' or (len(chat_history) >= 6 and last_msg_is_ai)) and current_stage != 'complete':
     with st.container():
         st.markdown("---")
         st.markdown(
@@ -494,41 +495,35 @@ if user_input:
     st.session_state.conversation_count += 1
     
     context = conv_manager.get_context()
+    current_stage = context.get('stage', 'initial')
     history = conv_manager.get_formatted_history(for_llm=True)
+    
+    # 단계 자동 전환 로직
+    user_lower = user_input.lower()
+    
+    # initial -> symptom_explore
+    if current_stage == 'initial':
+        conv_manager.update_stage('symptom_explore')
+    
+    # symptom_explore -> sleep_check (시간/언제 관련 답변 시)
+    elif current_stage == 'symptom_explore':
+        if any(word in user_lower for word in ['아침', '저녁', '오후', '항상', '하루종일', '언제나']):
+            conv_manager.update_stage('sleep_check')
+    
+    # sleep_check -> digestion_check (수면 관련 답변 시)
+    elif current_stage == 'sleep_check':
+        if any(word in user_lower for word in ['잠', '자', '못', '개운', '피곤', '졸려', '수면']):
+            conv_manager.update_stage('digestion_check')
     
     # AI 응답 생성
     time.sleep(1.0)
+    context = conv_manager.get_context()  # 업데이트된 stage 가져오기
     ai_response = generate_ai_response(user_input, context, history)
     conv_manager.add_message("ai", ai_response)
     
     # AI 응답에 "혀" 키워드가 있으면 digestion_check 단계로 전환
     if "혀" in ai_response or "설진" in ai_response:
         conv_manager.update_stage('digestion_check')
-    
-    # 3회 이상 대화 시 클로징 모드로 전환
-    if st.session_state.conversation_count >= 3 and st.session_state.mode == 'simulation':
-        st.session_state.mode = 'closing'
-        closing_msg = """원장님, 방금 보신 대화가 실제 환자에게 제가 자동으로 하는 상담 흐름입니다.
-
-정리해보면, 저는:
-1. 환자의 표현을 그대로 받아주고 공감하고,
-2. 증상을 기간·강도·수면·통증 부위로 쪼개서 듣고,
-3. 그 정보를 바탕으로 원장님 병원의 진료 철학에 맞게 설명하고,
-4. 마지막에는 자연스럽게 진맥 → 한약/침/추나 → 생활 교정으로 이어지게 설계됩니다.
-
-이제 상상해보십시오.
-
-이 AI를 원장님 병원 홈페이지에 24시간 붙여놓는다면?
-
-밤 11시, 퇴근하고 누워서 검색하는 직장인이 "만성 피로 한약"을 물으면, 제가 알아서 상담하고 예약까지 받아둡니다.
-
-실제 적용 사례로 말씀드리면:
-서울 A한의원 (월 신규 환자 약 80명 수준)
-- AI 도입 후 2개월 동안 온라인 문의 수 약 40% 증가
-- 예약 전환율 18% → 22.5% (약 25% 상승)
-
-폭발적인 매출 신화가 아니라, 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 조금씩 대신 떠받쳐주는 결과입니다."""
-        conv_manager.add_message("ai", closing_msg)
     
     st.rerun()
 
