@@ -371,6 +371,20 @@ def resolve_tongue_image_path(raw_path: str) -> Path | None:
 # ============================================
 # 혀 사진 선택 (digestion_check 단계 후 표시)
 # ============================================
+from pathlib import Path
+from PIL import Image
+
+BASE_DIR = Path(__file__).resolve().parent
+IMAGES_DIR = BASE_DIR / "images"
+
+# 혀 타입별 이미지 파일명 강제 매핑 (config.py랑 별개로, 여기서 박제)
+TONGUE_IMAGE_FILES = {
+    "담백설": "pale_tongue.png",
+    "치흔설": "tooth_tongue.png",
+    "황태설": "yellow_tongue.png",
+    "자색설": "purple_tongue.png",
+}
+
 context = conv_manager.get_context()
 if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
     st.markdown("---")
@@ -383,27 +397,28 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            raw_path = tongue_data.get("image", "")
+            # 1) 이 혀 타입에 해당하는 파일명 가져오기
+            filename = TONGUE_IMAGE_FILES.get(tongue_key)
 
-            image_path = resolve_tongue_image_path(raw_path)
-
-            # 디버깅 겸, 개발자만 보는 용도 (원장님 눈에는 거의 안 띔)
-            # st.caption(f"{tongue_data['name']} → {image_path if image_path else '이미지 없음'}")
+            if filename:
+                image_path = IMAGES_DIR / filename
+            else:
+                image_path = None
 
             try:
                 if image_path and image_path.exists():
                     img = Image.open(str(image_path))
                     st.image(img, use_container_width=True)
                 else:
-                    raise FileNotFoundError(f"Image not found: {raw_path}")
+                    # 이미지 못 찾으면 이모지로 대체
+                    raise FileNotFoundError(f"Image not found: {image_path}")
             except Exception:
-                # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
                     f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
                     unsafe_allow_html=True
                 )
 
-            # 혀 이름 표시
+            # 혀 이름
             st.markdown(
                 f"<div style='text-align:center; font-size:13px; font-weight:600; margin:8px 0;'>{tongue_data['name']}</div>",
                 unsafe_allow_html=True
@@ -452,77 +467,6 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
                 st.rerun()
 
-
-# ============================================
-# 자동 CTA (시뮬레이션 완료 후)
-# ============================================
-chat_history = conv_manager.get_history()
-last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
-
-# 시뮬레이션 완료 판단 (6회 이상 대화 + AI 답변으로 끝)
-if len(chat_history) >= 6 and last_msg_is_ai and conv_manager.get_context()['stage'] != 'complete':
-    st.markdown("---")
-    st.markdown(
-        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">이 시스템을 한의원에 도입하시겠습니까?</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다</p>",
-        unsafe_allow_html=True
-    )
-    
-    with st.form("consulting_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            clinic_name = st.text_input("병원명", placeholder="서울한의원")
-        with col2:
-            director_name = st.text_input("원장님 성함", placeholder="홍길동")
-        
-        contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
-        
-        submitted = st.form_submit_button("무료 도입 견적서 받기", use_container_width=True)
-        
-        if submitted:
-            if not clinic_name or not director_name or not contact:
-                st.error("필수 정보를 모두 입력해주세요.")
-            else:
-                lead_data = {
-                    'name': director_name,
-                    'contact': contact,
-                    'symptom': f"병원명: {clinic_name}",
-                    'preferred_date': '즉시 상담 희망',
-                    'chat_summary': conv_manager.get_summary(),
-                    'source': 'IMD_Strategic_Consulting',
-                    'type': 'Oriental_Clinic'
-                }
-                
-                success, message = lead_handler.save_lead(lead_data)
-                
-                if success:
-                    completion_msg = f"""
-견적서 발송이 완료되었습니다.
-
-{director_name} 원장님, 감사합니다.
-
-{clinic_name}에 최적화된 AI 실장 시스템 견적서를 
-{contact}로 24시간 내 전송해드리겠습니다.
-
-포함 내용:
-- 맞춤형 시스템 구축 비용
-- 월 운영비 및 유지보수
-- 지역 독점권 계약 조건
-- ROI 예상 시뮬레이션
-
-담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
-"""
-                    conv_manager.add_message("ai", completion_msg)
-                    conv_manager.update_stage('complete')
-                    
-                    st.success("견적서 신청이 완료되었습니다!")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error(f"오류: {message}")
 
 # ============================================
 # 입력창
