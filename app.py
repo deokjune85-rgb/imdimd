@@ -25,14 +25,26 @@ conv_manager = st.session_state.conv_manager
 st.markdown(f"""
 <style>
 .stApp {{
-    background: white;
+    background: white !important;
 }}
 .title {{
     text-align: center;
-    color: {COLOR_PRIMARY};
+    color: #111827;
     font-size: 24px;
     font-weight: 700;
     padding: 20px;
+}}
+/* 채팅 메시지 글자 검정 */
+[data-testid="stChatMessageContent"] {{
+    color: #111827 !important;
+}}
+[data-testid="stChatMessageContent"] p {{
+    color: #111827 !important;
+}}
+/* 이모지 아바타 숨기기 */
+[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarAssistant"] {{
+    display: none !important;
 }}
 </style>
 """, unsafe_allow_html=True)
