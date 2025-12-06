@@ -85,7 +85,7 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    margin-bottom: 100px;
+    margin-bottom: 200px;
 }}
 
 .ai-msg {{
@@ -293,12 +293,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 디버깅: 현재 단계 표시
-context = conv_manager.get_context()
-st.info(f"🔍 현재 단계: {context.get('stage')} | 선택된 혀: {context.get('selected_tongue')}")
-st.write(f"📊 대화 히스토리 개수: {len(conv_manager.get_history())}")
-st.markdown("---")
-
 # ============================================
 # 채팅 히스토리
 # ============================================
@@ -324,16 +318,6 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
         unsafe_allow_html=True
     )
     
-    # 디버깅 정보 표시
-    import os
-    st.write("🔍 디버깅 정보:")
-    st.write(f"현재 디렉토리: {os.getcwd()}")
-    st.write(f"images 폴더 존재: {os.path.exists('images')}")
-    if os.path.exists('images'):
-        st.write(f"images 폴더 내용: {os.listdir('images')}")
-    st.write(f"pale_tongue.png 존재: {os.path.exists('images/pale_tongue.png')}")
-    st.markdown("---")
-    
     # 1x4 가로 배열로 혀 사진 표시
     cols = st.columns(4)
     
@@ -341,17 +325,13 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
     
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            # 혀 사진 표시 - PIL로 열어서 표시
+            # 혀 사진 표시
             image_path = tongue_data['image']
             
             try:
-                # PIL로 이미지 열기
                 img = Image.open(image_path)
                 st.image(img, use_container_width=True)
-                st.success(f"✅ 로드 성공")
             except Exception as e:
-                # 에러 메시지 표시
-                st.error(f"❌ 에러: {str(e)[:50]}")
                 # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
                     f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
