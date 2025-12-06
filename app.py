@@ -395,20 +395,17 @@ if "mode" not in st.session_state:
 # 첫 메시지 세팅
 if "app_initialized" not in st.session_state:
     initial_msg = (
-        "안녕하십니까, 원장님.\n\n"
-        "저는 24시간 잠들지 않는 <b>AI 상담실장</b>입니다.\n\n"
-        "진료실에서 이런 말, 자주 들으시죠?\n\n"
-        "\"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요.\"\n\n"
-        "그 순간, 진료 동선도 끊기고, 원장님 마음도 같이 꺾이실 겁니다.\n\n"
-        "저는 그 <b>직전 단계에서</b>, 환자의 마음을 열고\n"
-        "시술과 프로그램을 받아들일 준비를 시키는 역할을 합니다.\n\n"
-        "백문이 불여일견입니다. 지금부터 원장님은 잠시 "
-        "'만성 피로 환자' 역할을 해봐 주십시오.\n"
+        "<b>원장님, 환자가 '비싸요'라고 하는 진짜 이유는</b> "
+        "돈이 없어서가 아닙니다.\n\n"
+        "내 몸이 그만큼 심각하다는 걸 <b>모르기 때문</b>입니다.\n\n"
+        "제가 질문 몇 개로 환자의 <b>'숨겨진 병리'</b>를 찾아내고,\n"
+        "스스로 지갑을 열게 만드는 과정을 보여드리겠습니다.\n\n"
+        "지금부터 원장님은 잠시 '만성 피로 환자' 역할을 해봐 주십시오.\n"
         "편한 말투로 현재 상태를 한 줄만 말씀해 주세요."
     )
     conv_manager.add_message("ai", initial_msg)
     st.session_state.app_initialized = True
-    conv_manager.update_stage("simulation")
+    conv_manager.update_stage("symptom_explore")
 
 # ============================================
 # 4. 헤더
@@ -455,24 +452,23 @@ for idx, msg in enumerate(conv_manager.get_history()):
 <div class="admin-log">
     <span class="log-header">🎯 AI SYSTEM LOG</span>
     <div class="log-msg">
-        <b>TARGET DETECTED</b><br>
-        환자 증상 키워드: <span class="log-highlight">'피곤', '만성'</span><br>
-        → 고가 비급여(공진단/녹용) 타겟군 식별<br>
-        → <b>'기력 회복 장기 프로그램'</b> 세일즈 시나리오 가동
+        <b>[분석] 기상 직후 피로 호소</b><br>
+        → 단순 과로 아님. 수면의 질 저하 또는 <span class="log-highlight">'기허(氣虛)'</span> 의심<br>
+        → 다음 단계: 소화기능 및 수면패턴 추적 필요
     </div>
 </div>
 """
         
-        # 두 번째 메시지: 패턴 분석
+        # 두 번째 메시지: 변증 심화
         elif idx == 3 and st.session_state.conversation_count >= 2:
             chat_html += """
 <div class="admin-log">
     <span class="log-header">📊 DEEP ANALYSIS</span>
     <div class="log-msg">
-        <b>패턴 심화 분석 완료</b><br>
-        진단: <span class="log-highlight">만성 피로 + 회복 불가 패턴</span><br>
-        → 단순 휴식으로는 회복 불가함을 인지시킴<br>
-        → 환자의 <b>위기감 증폭 중</b> (전환율 ↑)
+        <b>[Logic] 식곤증 + 만성피로</b><br>
+        = <span class="log-highlight">비위(소화기) 기능 저하</span>로 인한 기혈 생성 실패<br>
+        <b>[진단명]</b> 비기허(脾氣虛) 및 습담(濕痰) 정체 유력<br>
+        → 설진(혀 진단)으로 확증 필요
     </div>
 </div>
 """
@@ -480,13 +476,14 @@ for idx, msg in enumerate(conv_manager.get_history()):
         # 세 번째 메시지: 클로징 준비
         elif idx >= 5 and st.session_state.conversation_count >= 3:
             chat_html += """
-<div class="admin-log" style="border: 1px solid #D4AF37;">
-    <span class="log-header" style="color:#D4AF37;">💡 SALES OPPORTUNITY</span>
+<div class="admin-log" style="border: 2px solid #059669;">
+    <span class="log-header" style="color:#059669;">💡 SALES OPPORTUNITY</span>
     <div class="log-msg">
-        <b>원장님, 지금입니다.</b><br><br>
-        환자는 자신의 상태가 '심각하다'고 인지했습니다.<br>
-        이 타이밍에 <span class="log-highlight">'프리미엄 3개월 프로그램'</span>을<br>
-        제안하면 동의율이 <b>80% 이상</b>으로 올라갑니다.
+        <b>[전략] 단순 침 치료(1만원) 불가 판정</b><br>
+        → 고가 패키지(공진단/녹용) 제안 명분 확보<br><br>
+        <span class="log-highlight">환자는 자신의 몸이 심각함을 인지했습니다.</span><br>
+        이 타이밍에 <b>'집중 면역 프로그램'</b> 제안 시<br>
+        동의율 <b>80% 이상</b>으로 상승
     </div>
 </div>
 """
@@ -592,53 +589,46 @@ if user_input:
     if st.session_state.conversation_count >= 3 and st.session_state.mode == "simulation":
         st.session_state.mode = "closing"
         closing_msg = """
-원장님, 방금 보신 대화가 실제 환자에게 제가 자동으로 하는 상담 흐름입니다.
+<b>보셨습니까 원장님?</b>
 
-정리해보면, 저는:
+저는 환자의 말을 그냥 듣지 않습니다.
 
-1. 환자의 표현을 그대로 받아주고 공감하고,
-2. 증상을 기간·강도·수면·통증 부위로 쪼개서 듣고,
-3. 그 정보를 바탕으로 원장님 병원의 진료 철학에 맞게 설명하고,
-4. 마지막에는 자연스럽게 진맥 → 한약/침/추나 → 생활 교정으로 이어지게 설계됩니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+**'약을 먹을 수밖에 없는 몸 상태'**임을 스스로 인정하게 만듭니다.
 
-여기까지는 '만성 피로 한 명의 환자' 이야기에 불과합니다.
+방금 체험하신 흐름:
 
-이제 상상해보십시오.
+1️⃣ <b>증상 구체화</b>: "언제 제일 힘드세요?" (단순 피로 배제)
+2️⃣ <b>원인 추적</b>: 수면 → 소화 연결 (비기허 변증)
+3️⃣ <b>시각적 증거</b>: 혀 사진으로 확증 (치흔설)
+4️⃣ <b>위기감 조성</b>: "쉬어서 낫는 단계 지났습니다"
+5️⃣ <b>솔루션 제안</b>: 녹용/공진단 필수성 각인
 
-이 AI를 원장님 병원 홈페이지에 24시간 붙여놓는다면,
+이 과정을 병원 홈페이지에 24시간 붙여놓으면,
 
-밤 11시, 퇴근하고 누워서 검색하는 직장인이
-"만성 피로 한약"을 물으면, 제가 알아서 상담하고 예약까지 받아둡니다.
-낮에는 다이어트, 저녁에는 교통사고 후유증, 주말에는 만성 두통 환자까지
-동시에 상담을 받아주는 구조가 됩니다.
+밤 11시에 검색하는 직장인도
+아침 8시에 문의하는 주부도
+자동으로 "내 몸이 심각하구나"를 깨닫고 예약 버튼을 누릅니다.
 
-실제 적용 사례로 말씀드리면, 서울 A한의원(월 신규 환자 약 80명 수준)의 경우:
-
-- AI 도입 후 2개월 동안 온라인 문의 수 약 40% 증가
-- 예약 전환율 18% → 22.5% (약 25% 상승)
-
-폭발적인 매출 신화를 약속하는 시스템이 아니라,
-원장님이 진료실에서 직접 설명해야 했던 부분을
-AI가 온라인에서 조금씩 대신 떠받쳐주는 구조입니다.
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- **핵심**: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
 
 여기서 딱 한 가지 질문만 남습니다.
 
-"우리 병원에 붙이면, 실제 숫자가 얼마나 바뀔까?"
-
-월 신규 환자 수, 주요 클리닉(예: 피로/다이어트/추나)의 비중,
-온라인 문의 비율 정도만 알면,
-'원장님 병원 기준'으로 시뮬레이션을 그려볼 수 있습니다.
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
 
 이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 데이터를 기준으로 한
-간단한 도입 시나리오와 견적 요약본을 보내드리겠습니다.
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
         conv_manager.add_message("ai", closing_msg)
         conv_manager.update_stage("conversion")
         st.rerun()
 
     else:
-        with st.spinner("AI 수석 실장이 원장님 상황을 정리하고 있습니다..."):
+        # 로딩 연출 (1초 대기)
+        with st.spinner("🔬 환자 데이터 분석 중..."):
+            time.sleep(1)  # 1초 로딩
             ai_response = generate_ai_response(user_input, context, history)
 
         conv_manager.add_message("ai", ai_response)
