@@ -321,15 +321,34 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
     # 1x4 가로 배열로 혀 사진 표시
     cols = st.columns(4)
     
+    import os
+    
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
             # 혀 사진 표시
-            try:
-                st.image(tongue_data['image'], use_container_width=True)
-            except:
+            image_path = tongue_data['image']
+            
+            # 여러 경로 시도
+            possible_paths = [
+                image_path,  # 원본 경로
+                os.path.join('.', image_path),  # ./images/xxx.png
+                os.path.join(os.getcwd(), image_path),  # 절대경로
+            ]
+            
+            image_loaded = False
+            for path in possible_paths:
+                try:
+                    if os.path.exists(path):
+                        st.image(path, use_container_width=True)
+                        image_loaded = True
+                        break
+                except:
+                    continue
+            
+            if not image_loaded:
                 # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
-                    f"<div style='text-align:center; font-size:80px;'>{tongue_data['emoji']}</div>",
+                    f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
                     unsafe_allow_html=True
                 )
             
@@ -353,13 +372,36 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
 ⚠️ **경고**: {tongue_data['warning']}
 
-이제 종합 건강 점수를 확인해보겠습니다."""
+---
+
+원장님, 방금 보신 과정이 실제로 제가 환자에게 자동으로 진행하는 흐름입니다.
+
+**제가 한 일:**
+1. "피곤해요" → "언제부터? 얼마나?" 구체적으로 물었습니다
+2. 수면, 소화 패턴을 쪼개서 물어봤습니다
+3. 혀 사진으로 "내 몸이 심각하구나"를 스스로 깨닫게 만들었습니다
+
+이 대화를 원장님 병원 홈페이지에 24시간 붙여두면?
+
+**밤 11시에 "만성 피로 한의원" 검색하는 직장인**에게 제가 알아서:
+- 증상 듣고
+- 위기감 조성하고  
+- "이건 한약이 필요하겠네요" 단계까지 끌어올려서
+- 예약까지 받아둡니다
+
+실제 사례:
+서울 A한의원 (월 신규 80명 수준)
+→ AI 도입 후 온라인 문의 40% 증가
+→ 예약 전환율 18% → 22.5% (약 25% 상승)
+
+폭발적인 매출 신화가 아닙니다. 
+다만 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 대신 떠받쳐주는 결과입니다."""
                 
                 conv_manager.add_message("ai", diagnosis_msg)
                 
                 # 건강 점수 계산
                 conv_manager.calculate_health_score()
-                conv_manager.update_stage('diagnosis')
+                conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
                 
                 st.rerun()
 
