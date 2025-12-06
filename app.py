@@ -296,13 +296,16 @@ st.markdown("""
 # ============================================
 # 채팅 히스토리
 # ============================================
+chat_html = '<div class="chat-area">'
+
 for msg in conv_manager.get_history():
     if msg['role'] == 'ai':
-        with st.chat_message("assistant"):
-            st.markdown(msg["text"])
+        chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
     elif msg['role'] == 'user':
-        with st.chat_message("user"):
-            st.markdown(msg["text"])
+        chat_html += f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
+
+chat_html += '</div>'
+st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
 # 혀 사진 선택 (digestion_check 단계 후 표시)
