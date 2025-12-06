@@ -1,293 +1,777 @@
-# prompt_engine.py
 """
-한의원 AI 실장 전용 프롬프트 엔진
-
-역할:
-- app.py에서 넘겨준 context['stage']에 따라
-  각 단계별로 '무슨 톤으로 / 무엇을 물어볼지'를 LLM에게 지시한다.
-- 마지막 줄에 [[STAGE:...]] 태그를 붙여서, 다음 단계만 app.py에 알려준다.
-
-플로우:
-initial → symptom_explore → sleep_check → digestion_check → tongue_select → conversion → complete
+IMD Strategic Consulting - AI Sales Bot (B2B)
+한의원 원장님 대상 AI 실장 시스템 판매 데모
 """
 
-from typing import Any
 import streamlit as st
+import time
+from conversation_manager import get_conversation_manager
+from prompt_engine import get_prompt_engine, generate_ai_response
+from lead_handler import LeadHandler
+from config import (
+    COLOR_PRIMARY,
+    COLOR_BG,
+    COLOR_TEXT,
+    COLOR_AI_BUBBLE,
+    COLOR_USER_BUBBLE,
+    COLOR_BORDER,
+    TONGUE_TYPES,
+)
 
 # ============================================
-# 0. 모델 준비 (Gemini 사용, 없으면 폴백)
+# 페이지 설정
 # ============================================
-try:
-    import google.generativeai as genai
-
-    try:
-        API_KEY = st.secrets["GOOGLE_API_KEY"]
-        genai.configure(api_key=API_KEY)
-        _MODEL = genai.GenerativeModel("gemini-1.5-flash-latest")
-    except Exception:
-        _MODEL = None
-except Exception:
-    genai = None
-    _MODEL = None
-
-
-def get_prompt_engine() -> Any:
-    """app.py와 인터페이스 맞추기용. 필요하면 여기서 모델 핸들 꺼내 쓸 수 있음."""
-    return _MODEL
-
+st.set_page_config(
+    page_title="IMD Strategic Consulting",
+    page_icon="💼",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
 
 # ============================================
-# 1. 단계별 기본 폴백 멘트
+# CSS
 # ============================================
-def _fallback_response(user_input: str, stage: str) -> str:
-    """모델이 없거나 에러났을 때 최소한의 기본 멘트."""
-    if stage == "initial":
-        return (
-            "말씀만 들어도 요즘 많이 지치고 불편하셨던 게 느껴집니다.\n\n"
-            "어느 부위가, 언제부터, 어떤 상황에서 가장 힘드신지\n"
-            "편하게 한 번만 더 말씀해 주실 수 있을까요?"
-        )
-    elif stage == "symptom_explore":
-        return (
-            "지금 설명해 주신 증상을 보니, 단순히 하루 이틀의 피곤함은 아닌 것 같습니다.\n\n"
-            "이번에는 하루 중 언제 증상이 더 심해지는지,\n"
-            "특정 자세나 상황에서 더 악화되는 순간이 있는지도 함께 알려주시면 좋겠습니다."
-        )
-    elif stage == "sleep_check":
-        return (
-            "이제 수면 상태를 한 번 같이 보겠습니다.\n\n"
-            "평균적으로 몇 시쯤 잠자리에 드시고, 몇 시간 정도 주무시는지,\n"
-            "자고 일어나도 개운하지 않은 날이 더 많은지도 알려주세요."
-        )
-    elif stage == "digestion_check":
-        return (
-            "이제 소화 쪽을 체크해보겠습니다.\n\n"
-            "식사 후에 속이 더부룩하거나 답답한 느낌이 자주 있으신지,\n"
-            "대변은 규칙적인 편인지도 함께 알려주세요."
-        )
-    elif stage == "tongue_select":
-        return (
-            "지금까지의 증상, 수면, 소화 패턴을 보면 몸 안쪽의 에너지 공장이 많이 지친 상태일 수 있습니다.\n\n"
-            "겉으로 보이는 혀 상태를 보면 안쪽 장기의 상태를 조금 더 정확하게 볼 수 있습니다.\n"
-            "거울을 보시고 혀를 한 번 살펴보신 뒤, 화면에 보이는 혀 사진 중 가장 비슷한 것을 선택해 주세요."
-        )
-    elif stage == "conversion":
-        return (
-            "지금까지 정리해보면, 스스로 버티기에는 꽤 부담이 쌓여 있는 상태로 보입니다.\n\n"
-            "한약과 치료를 통해 체계적으로 관리해 주면, 몸이 회복되는 속도 자체를 바꿀 수 있습니다.\n"
-            "원하시면 원장님과 상의해서 보다 구체적인 치료 방향과 계획을 잡아볼 수 있도록 도와드리겠습니다."
-        )
-    else:  # complete 포함
-        return (
-            "오늘 이야기 나눠주셔서 감사합니다.\n\n"
-            "언제든지 몸 상태가 걱정되실 때는 이렇게 편하게 말씀만 해 주세요.\n"
-            "필요하시면 다시 한 번 지금까지의 내용을 정리해서 설명도 도와드리겠습니다."
-        )
+st.markdown(
+    f"""
+<style>
+/* 전체 흰색 배경 */
+.stApp {{
+    background: white !important;
+}}
 
+.main {{
+    background: white !important;
+}}
 
-# 단계별 기본 다음 단계 맵
-_NEXT_STAGE_MAP = {
-    "initial": "symptom_explore",
-    "symptom_explore": "sleep_check",
-    "sleep_check": "digestion_check",
-    "digestion_check": "tongue_select",
-    "tongue_select": "conversion",   # 실제 전환은 app.py에서 혀 선택 후 conversion으로 이동
-    "conversion": "complete",
-    "complete": "complete",
-}
+.main .block-container {{
+    padding: 0 !important;
+    max-width: 720px !important;
+    margin: 0 auto !important;
+    background: white !important;
+}}
 
+header, .stDeployButton {{
+    display: none !important;
+}}
+
+footer {{
+    display: none !important;
+}}
+
+/* 타이틀 */
+.title-box {{
+    text-align: center;
+    padding: 20px 20px 12px 20px;
+    background: white;
+}}
+
+.title-box h1 {{
+    font-family: Arial, sans-serif !important;
+    font-size: 30px !important;
+    font-weight: 700 !important;
+    color: {COLOR_PRIMARY} !important;
+    margin: 0 !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+}}
+
+.title-box .sub {{
+    font-size: 16px;
+    color: #4B5563;
+    margin-top: 4px;
+}}
+
+/* 채팅 영역 */
+.chat-area {{
+    padding: 12px 20px 4px 20px;
+    background: white !important;
+    min-height: 150px;
+    margin-bottom: 100px;
+}}
+
+.ai-msg {{
+    background: white !important;
+    color: #1F2937 !important;
+    padding: 14px 18px !important;
+    border-radius: 18px 18px 18px 4px !important;
+    margin: 16px 0 8px 0 !important;
+    max-width: 85% !important;
+    display: block !important;
+    font-size: 20px !important;
+    line-height: 1.5 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    border: none !important;
+    outline: none !important;
+    clear: both !important;
+}}
+
+.ai-msg::before, .ai-msg::after {{
+    content: none !important;
+    display: none !important;
+}}
+
+.user-msg {{
+    background: {COLOR_USER_BUBBLE} !important;
+    color: #1F2937 !important;
+    padding: 12px 18px !important;
+    border-radius: 18px 18px 4px 18px !important;
+    margin: 8px 0 !important;
+    max-width: 70% !important;
+    display: inline-block !important;
+    font-size: 19px !important;
+    line-height: 1.4 !important;
+    border: none !important;
+    outline: none !important;
+}}
+
+.msg-right {{
+    text-align: right !important;
+    clear: both !important;
+    display: block !important;
+    width: 100% !important;
+    margin-top: 16px !important;
+}}
+
+/* 입력창 */
+.stChatInput {{
+    position: fixed !important;
+    bottom: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 10px 0 !important;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.08) !important;
+    z-index: 999 !important;
+    margin: 0 !important;
+}}
+
+.stChatInput > div {{
+    max-width: 680px !important;
+    margin: 0 auto !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 24px !important;
+    background: white !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}}
+
+.stChatInput input {{
+    color: #1F2937 !important;
+    background: white !important;
+    -webkit-text-fill-color: #1F2937 !important;
+}}
+
+.stChatInput input::placeholder {{
+    color: #D1D5DB !important;
+    font-size: 15px !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #D1D5DB !important;
+}}
+
+/* 푸터 */
+.footer {{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: white !important;
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 11px;
+    color: #9CA3AF;
+    border-top: 1px solid {COLOR_BORDER};
+    z-index: 998;
+}}
+
+.footer b {{
+    color: {COLOR_TEXT};
+    font-weight: 600;
+}}
+
+/* 폼 */
+.stForm {{
+    background: white;
+    padding: 20px;
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 12px;
+    margin: 16px 20px 180px 20px;
+}}
+
+.stForm label {{
+    color: #1F2937 !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}}
+
+input, textarea, select {{
+    border: 1px solid {COLOR_BORDER} !important;
+    border-radius: 8px !important;
+    background: white !important;
+    color: #1F2937 !important;
+}}
+
+input::placeholder, textarea::placeholder {{
+    color: #D1D5DB !important;
+    opacity: 1 !important;
+}}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {{
+    .main .block-container {{
+        padding: 0 !important;
+        max-width: 100% !important;
+    }}
+    
+    .title-box {{
+        padding: 8px 8px 8px 8px !important;
+    }}
+    
+    .title-box h1 {{
+        font-size: 22px !important;
+        line-height: 1.1 !important;
+    }}
+    
+    .chat-area {{
+        padding: 8px 8px 4px 8px !important;
+    }}
+    
+    .ai-msg {{
+        font-size: 16px !important;
+        padding: 10px 12px !important;
+    }}
+    
+    .user-msg {{
+        font-size: 15px !important;
+    }}
+    
+    /* 혀 사진 4개 가로 배열 */
+    div[data-testid="stHorizontalBlock"] {{
+        gap: 4px !important;
+    }}
+    
+    div[data-testid="column"] {{
+        min-width: 0 !important;
+        flex: 0 0 23% !important;
+        max-width: 25% !important;
+        padding: 0 2px !important;
+    }}
+    
+    div[data-testid="column"] > div {{
+        padding: 0 !important;
+    }}
+    
+    div[data-testid="column"] img {{
+        width: 100% !important;
+        height: auto !important;
+        margin-bottom: 2px !important;
+    }}
+    
+    div[data-testid="column"] button {{
+        font-size: 10px !important;
+        padding: 4px 2px !important;
+        margin-top: 2px !important;
+        white-space: nowrap !important;
+    }}
+    
+    div[data-testid="column"] div[style*="text-align:center"] {{
+        font-size: 10px !important;
+        margin: 2px 0 !important;
+    }}
+    
+    .stChatInput {{
+        padding: 10px 4px !important;
+    }}
+    
+    .stChatInput > div {{
+        max-width: 100% !important;
+        margin: 0 4px !important;
+    }}
+}}
+
+/* 에러 메시지 숨기기 */
+.stException {{
+    display: none !important;
+}}
+
+div[data-testid="stException"] {{
+    display: none !important;
+}}
+
+.element-container:has(.stException) {{
+    display: none !important;
+}}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 # ============================================
-# 2. 메인 함수: generate_ai_response
+# 초기화
 # ============================================
-def generate_ai_response(user_input: str, context: dict, history: str) -> str:
+conv_manager = get_conversation_manager()
+prompt_engine = get_prompt_engine()
+lead_handler = LeadHandler()
+
+ctx = conv_manager.get_context()
+if not ctx.get("stage"):
+    conv_manager.update_stage("initial")
+
+# B2B 모드 시작 메시지
+if "app_initialized" not in st.session_state:
+    initial_msg = """안녕하십니까, 원장님.
+
+저는 24시간 잠들지 않는 AI 상담실장입니다.
+
+진료실에서 이런 말, 자주 들으시죠?
+
+"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요."
+
+그 순간, 진료 동선도 끊기고, 원장님 마음도 같이 꺾이실 겁니다.
+
+저는 그 순간 전에, 환자의 마음을 열고, 지갑을 열 준비를 시키는 역할을 합니다.
+
+백문이 불여일견입니다.
+
+지금부터 원장님은 '만성 피로 환자' 역할을 한 번 해봐 주십시오.
+제가 어떻게 상담하고, 어떻게 설득하는지 보여드리겠습니다.
+
+편한 말투로 말씀해 주세요.
+
+예를 들면:
+- "아 놔, 요즘 진짜 너무 피곤해요"
+- "자고 일어나도 피곤이 안 풀려요"
+- "커피 안 마시면 머리가 안 돌아가요"
+
+아무 말이나 편하게 한번 던져보시면 됩니다."""
+    conv_manager.add_message("ai", initial_msg)
+    st.session_state.app_initialized = True
+    st.session_state.mode = "simulation"
+    st.session_state.conversation_count = 0
+
+# ============================================
+# 헤더
+# ============================================
+st.markdown(
     """
-    app.py에서:
-        raw_output = generate_ai_response(user_input, context, history_for_llm)
-
-    출력 형식 (반드시):
-        (환자에게 보여줄 상담 멘트)
-
-        [[STAGE:다음단계]]
-
-    가능한 단계:
-        - initial
-        - symptom_explore
-        - sleep_check
-        - digestion_check
-        - tongue_select
-        - conversion
-        - complete
-    """
-    stage = context.get("stage", "initial")
-
-    # ----------------------------------------
-    # 2-1. 단계별 역할 설명
-    # ----------------------------------------
-    stage_guidance = {
-        "initial": """
-- 환자가 처음 증상을 이야기하는 단계입니다.
-- 해야 할 일:
-  * 따뜻하게 공감해 줍니다.
-  * '언제부터 / 어느 부위 / 어떤 상황에서' 불편한지 가볍게 1~3개 정도 질문합니다.
-- 하지 말 것:
-  * 혀 / 거울 / 사진 / 백태 / 설진 같은 단어를 꺼내지 않습니다.
-  * 치료 비용, 패키지, 시술 설명 등은 언급하지 않습니다.
-- 다음 단계:
-  * [[STAGE:symptom_explore]] 로 진행합니다.
+<div class="title-box">
+    <h1>IMD STRATEGIC CONSULTING</h1>
+    <div class="sub">원장님의 진료 철학을 완벽하게 학습한 'AI 수석 실장'을 소개합니다</div>
+    <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)</div>
+</div>
 """,
-        "symptom_explore": """
-- 주 증상을 조금 더 구체화하는 단계입니다.
-- 해야 할 일:
-  * 환자가 말한 부위와 상황을 바탕으로 2~3개의 추가 질문을 던집니다.
-    예: 어떤 동작에서 더 심해지는지, 하루 중 언제가 더 힘든지 등.
-  * 지금까지 들은 내용을 짧게 정리해 주며 '혼자 참은 시간이 길었겠다'는 공감을 표현합니다.
-- 하지 말 것:
-  * 아직 혀 / 거울 / 사진 / 설진 언급 금지.
-  * 치료 세부 계획, 약 이름, 비용 이야기를 꺼내지 않습니다.
-- 다음 단계:
-  * [[STAGE:sleep_check]] 로 진행합니다.
-""",
-        "sleep_check": """
-- 수면 상태를 집중적으로 확인하는 단계입니다.
-- 해야 할 일:
-  * 총 수면 시간, 잠드는 데 걸리는 시간, 자다가 깨는지 등을 2~3개 질문합니다.
-  * 수면과 현재 증상의 연관성을 부드럽게 설명해 줍니다.
-- 하지 말 것:
-  * 여전히 혀 / 거울 / 설진 언급 금지.
-  * 너무 단정적으로 '그래서 이 병이다'라고 말하지 않습니다.
-- 다음 단계:
-  * [[STAGE:digestion_check]] 로 진행합니다.
-""",
-        "digestion_check": """
-- 소화와 대변 패턴만 확인하는 단계입니다.
-- 해야 할 일:
-  * 식사 후 더부룩함, 트림, 명치 답답함, 변비/설사 여부 등을 2~3개 질문합니다.
-  * '먹은 것을 에너지로 바꾸는 공장(비위)이 얼마나 잘 돌아가고 있는지'를 쉽게 풀어 설명해 줍니다.
-- 하지 말 것:
-  * 이 단계에서는 혀 / 거울 / 사진 / 설진 같은 단어를 절대 꺼내지 않습니다.
-  * 혀 상태를 보자는 말도 하지 않습니다. 그건 다음 단계의 몫입니다.
-- 다음 단계:
-  * [[STAGE:tongue_select]] 로 진행합니다.
-""",
-        "tongue_select": """
-- 이 단계에서 처음으로 혀 / 거울 / 설진 이야기를 꺼냅니다.
-- 해야 할 일:
-  * 지금까지 나온 증상, 수면, 소화 패턴을 한두 문장으로 정리해 줍니다.
-  * '겉으로 보이는 혀 상태를 보면 안쪽 장기의 상태를 더 정확하게 볼 수 있다'는 점을 설명합니다.
-  * 환자에게 이렇게 안내합니다:
-    - 거울을 보시고 본인의 혀를 한 번 살펴보시라고 합니다.
-    - 화면에 보이는 혀 사진 4개 중에서 가장 비슷한 것을 하나 골라달라고 안내합니다.
-- 하지 말 것:
-  * 여기서 새로 소화/수면을 다시 캐묻지 않습니다.
-  * 과도한 공포 조장은 하지 않습니다. (예: 큰 병일 수 있다 식으로 단정 금지)
-- 다음 단계:
-  * 일반적으로 [[STAGE:tongue_select]] 를 유지하거나,
-    짧게 혀 선택이 어려울 때의 팁을 한 번 더 안내해 줄 수 있습니다.
-  * 실제로 conversion 단계로 넘어가는 것은 app.py에서 혀를 선택했을 때 처리합니다.
-""",
-        "conversion": """
-- 혀 선택 후, 지금까지 정보를 바탕으로 치료 필요성을 정리하는 단계입니다.
-- 해야 할 일:
-  * 증상 / 수면 / 소화 / 혀 상태(요약)를 연결해서 설명해 줍니다.
-  * '이 정도면 한 번 제대로 체계적으로 관리해 보는 것이 좋다'는 메시지를 전합니다.
-  * '원장님과 상의해 한약이나 치료 계획을 세우면, 어느 지점을 목표로 회복을 도와드릴지'를 이야기합니다.
-  * 부담스럽지 않게, '필요하시면 예약이나 상담을 도와드릴 수 있다'는 톤으로 마무리합니다.
-- 하지 말 것:
-  * 가격, 횟수, 구체적 패키지 등은 여기서 직접 언급하지 않습니다.
-- 다음 단계:
-  * 보통 [[STAGE:complete]] 로 마무리합니다.
-""",
-        "complete": """
-- 견적/예약 접수까지 끝난 상태로 가정하는 단계입니다.
-- 해야 할 일:
-  * 감사 인사를 전하고, '궁금한 점 생기면 언제든지 편하게 물어보라'고 안내합니다.
-  * 필요하면 생활 관리나 간단한 주의사항 한두 가지 정도를 덧붙일 수 있습니다.
-- 다음 단계:
-  * [[STAGE:complete]] 로 유지합니다.
-""",
-    }
+    unsafe_allow_html=True,
+)
 
-    stage_text = stage_guidance.get(stage, stage_guidance["initial"])
+# ============================================
+# 채팅 히스토리
+# ============================================
+with st.container():
+    chat_html = '<div class="chat-area">'
+    for msg in conv_manager.get_history():
+        if msg["role"] == "ai":
+            chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
+        elif msg["role"] == "user":
+            chat_html += (
+                f'<div class="msg-right"><span class="user-msg">'
+                f'{msg["text"]}</span></div>'
+            )
+    chat_html += "</div>"
+    st.markdown(chat_html, unsafe_allow_html=True)
 
-    # ----------------------------------------
-    # 2-2. 시스템 프롬프트 구성
-    # ----------------------------------------
-    system_prompt = f"""
-너는 한의원 'AI 수석 실장'이다.
+# ============================================
+# 혀 사진 선택 UI (tongue_select 단계에서만)
+# ============================================
+context = conv_manager.get_context()
+chat_history = conv_manager.get_history()
 
-목표:
-- 환자의 말을 잘 받아주고 공감하면서,
-- 원장님이 보기 좋게 정보가 정리되도록 단계별로 질문을 이어간다.
-- 말투는 실제 한의원 카운터에 있는 실장이 사용하는 자연스러운 존댓말 한국어여야 한다.
+show_tongue_ui = (
+    context.get("stage") == "tongue_select"
+    and not context.get("selected_tongue")
+    and chat_history
+    and chat_history[-1]["role"] == "ai"
+    and ("거울" in chat_history[-1]["text"] or "혀" in chat_history[-1]["text"])
+)
 
-절대 규칙:
-- 환자가 어떤 말을 하더라도, 지금 '단계(stage)'에 맞는 질문과 설명만 한다.
-- 아직 오지 않은 단계의 내용을 미리 땡겨서 말하지 않는다.
-  (예: stage가 initial이나 symptom_explore일 때 혀/거울/설진을 꺼내지 말 것)
-- 한 번의 응답에서 1~3개 정도의 질문만 던지고, 나머지는 공감과 정리 위주로 말한다.
-- 리스트를 쓰더라도 너무 교과서처럼 딱딱하지 않게, 실제 상담 대화처럼 작성한다.
-- 의학적 확진, 위험한 경고, 무조건적인 단정은 피하고,
-  '가능성이 높아 보인다', '점검이 필요해 보인다' 식으로 완곡하게 말한다.
+if show_tongue_ui:
+    from PIL import Image
 
-현재 단계(stage):
-{stage}
+    with st.container():
+        st.markdown(
+            f'<div style="text-align:center; color:{COLOR_PRIMARY}; '
+            f'font-weight:600; font-size:20px; margin:4px 0 8px 0;">'
+            "거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>",
+            unsafe_allow_html=True,
+        )
 
-현재 단계에서의 역할/주의사항:
-{stage_text}
+        cols = st.columns(4)
 
-대화 히스토리(요약 또는 포맷된 문자열):
-{history}
+        for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
+            with cols[idx]:
+                image_path = tongue_data["image"]
+                try:
+                    img = Image.open(image_path)
+                    st.image(img, use_container_width=True)
+                except Exception:
+                    st.markdown(
+                        f"<div style='text-align:center; font-size:80px; "
+                        f"padding:20px 0;'>{tongue_data['emoji']}</div>",
+                        unsafe_allow_html=True,
+                    )
 
-마지막 환자 발화:
-{user_input}
+                st.markdown(
+                    "<div style='text-align:center; font-size:13px; "
+                    "font-weight:600; margin:4px 0; color:#1F2937;'>"
+                    f"{tongue_data['name']}</div>",
+                    unsafe_allow_html=True,
+                )
 
-출력 형식:
-1) 먼저 환자에게 보여줄 상담 멘트를 자연스럽게 작성한다.
-2) 줄바꿈 두 번 뒤, 마지막 줄에 정확히 다음 형식으로만 stage를 쓴다:
+                if st.button(
+                    "선택", key=f"tongue_{tongue_key}", use_container_width=True
+                ):
+                    conv_manager.update_context("selected_tongue", tongue_key)
+                    conv_manager.update_stage("conversion")
 
-   [[STAGE:다음단계]]
+                    diagnosis_msg = (
+                        f"**{tongue_data['name']}** 선택하셨습니다.\n\n"
+                        f"{tongue_data['analysis']}\n\n"
+                        f"**주요 증상**: {tongue_data['symptoms']}\n\n"
+                        f"⚠️ **경고**: {tongue_data['warning']}\n\n"
+                        "---\n\n"
+                        "원장님, 방금 보신 과정이 실제로 제가 환자에게 자동으로 진행하는 흐름입니다.\n\n"
+                        "**제가 한 일:**\n"
+                        "1. 환자의 증상을 구체적으로 쪼개서 물었습니다.\n"
+                        "2. 수면과 소화 패턴을 함께 보면서 '버티고 있는 몸'인지 확인했습니다.\n"
+                        "3. 혀 상태를 통해 환자 스스로 '내 몸이 생각보다 심각하구나'를 깨닫게 만들었습니다.\n\n"
+                        "이 대화를 원장님 병원 홈페이지에 24시간 붙여두면,\n"
+                        "밤 11시, 검색창에 '만성피로 한의원'을 치는 직장인에게 제가 알아서:\n"
+                        "- 증상을 듣고,\n- 위기감을 조성하고,\n"
+                        "- '이 정도면 한약이 필요합니다' 단계까지 끌어올린 뒤,\n"
+                        "- 예약이나 연락처 남기기까지 유도합니다."
+                    )
 
-예시 출력 (형식만 참고):
+                    conv_manager.add_message("ai", diagnosis_msg)
+                    conv_manager.calculate_health_score()
+                    st.rerun()
 
-"요즘 어깨 때문에 많이 힘드셨겠어요. 잠깐만 들어도 그동안 혼자 버티고 계셨던 게 느껴집니다.
+        st.markdown("<div style='height:150px;'></div>", unsafe_allow_html=True)
 
-혹시 통증이 제일 심해지는 시간이 따로 있으실까요?
-예를 들면, 아침에 일어날 때가 더 뻐근한지, 아니면 하루 일과 끝나고 저녁이 더 힘드신지 궁금합니다.
+# ============================================
+# 자동 CTA (conversion 단계)
+# ============================================
+current_stage = conv_manager.get_context().get("stage")
+selected_tongue = conv_manager.get_context().get("selected_tongue")
 
-[[STAGE:symptom_explore]]"
+if current_stage == "conversion" and selected_tongue and current_stage != "complete":
+    with st.container():
+        st.markdown("---")
+        st.markdown(
+            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; '
+            f'font-size:18px; margin:20px 0 10px;">'
+            "이 시스템을 한의원에 도입하시겠습니까?</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<p style='text-align:center; color:#6B7280; font-size:14px; "
+            "margin-bottom:20px;'>지역구 독점권은 선착순입니다. "
+            "무료 도입 견적서를 보내드립니다</p>",
+            unsafe_allow_html=True,
+        )
+
+        with st.form("consulting_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                clinic_name = st.text_input("병원명", placeholder="서울한의원")
+            with col2:
+                director_name = st.text_input("원장님 성함", placeholder="홍길동")
+
+            contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
+
+            submitted = st.form_submit_button(
+                "무료 도입 견적서 받기", use_container_width=True
+            )
+
+            if submitted:
+                if not clinic_name or not director_name or not contact:
+                    st.error("필수 정보를 모두 입력해주세요.")
+                else:
+                    lead_data = {
+                        "name": director_name,
+                        "contact": contact,
+                        "symptom": f"병원명: {clinic_name}",
+                        "preferred_date": "즉시 상담 희망",
+                        "chat_summary": conv_manager.get_summary(),
+                        "source": "IMD_Strategic_Consulting",
+                        "type": "Oriental_Clinic",
+                    }
+
+                    success, message = lead_handler.save_lead(lead_data)
+
+                    if success:
+                        completion_msg = f"""
+견적서 발송이 완료되었습니다.
+
+{director_name} 원장님, 감사합니다.
+
+{clinic_name}에 최적화된 AI 실장 시스템 견적서를 
+{contact}로 24시간 내 전송해드리겠습니다.
+
+포함 내용:
+- 맞춤형 시스템 구축 비용
+- 월 운영비 및 유지보수
+- 지역 독점권 계약 조건
+- ROI 예상 시뮬레이션
+
+담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
 """
+                        conv_manager.add_message("ai", completion_msg)
+                        conv_manager.update_stage("complete")
+
+                        st.success("견적서 신청이 완료되었습니다!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"오류: {message}")
+
+# ============================================
+# 입력창
+# ============================================
+user_input = st.chat_input("원장님의 생각을 말씀해주세요")
+
+if user_input:
+    conv_manager.add_message("user", user_input, metadata={"type": "text"})
+
+    if "conversation_count" not in st.session_state:
+        st.session_state.conversation_count = 0
+    st.session_state.conversation_count += 1
+
+    context = conv_manager.get_context()
+    current_stage = context.get("stage", "initial")
+    history_for_llm = conv_manager.get_formatted_history(for_llm=True)
+    user_lower = user_input.lower()
 
     # ----------------------------------------
-    # 2-3. 모델이 없을 때: 안전 폴백
+    # 1) 초기 단계: 증상 타입 분류 + 첫 멘트
     # ----------------------------------------
-    if _MODEL is None:
-        base = _fallback_response(user_input, stage)
-        next_stage = _NEXT_STAGE_MAP.get(stage, "symptom_explore")
-        return f"{base}\n\n[[STAGE:{next_stage}]]"
+    if current_stage == "initial":
+        # 근골격계 통증 (허리/목/어깨/무릎 등)
+        if any(
+            word in user_lower
+            for word in ["허리", "목", "어깨", "무릎", "관절", "디스크", "척추", "허벅지", "골반"]
+        ):
+            conv_manager.update_context("main_symptom", "msk_pain")
+            ai_response = """허리나 목·어깨 같은 근골격계 통증 때문에 많이 힘드셨겠습니다.
+
+단순히 근육이 한 번 뭉친 건지, 구조적인 문제인지에 따라 접근이 완전히 달라집니다.
+
+**몇 가지만 여쭤보겠습니다.**
+- 통증이 처음 느껴진 건 언제쯤인가요?
+- 오래 앉아 있거나 서 있을 때 더 심해지나요?
+- 아침에 일어날 때가 더 뻐근한 편인가요, 아니면 하루 끝난 저녁이 더 아프신가요?"""
+        # 다리 쥐 / 저림
+        elif any(word in user_lower for word in ["쥐", "저림", "저리", "종아리", "발바닥", "다리 통증"]):
+            conv_manager.update_context("main_symptom", "leg_cramp")
+            ai_response = """다리에 쥐가 나거나 저리면 일상 생활이 정말 많이 불편해지죠.
+
+혈액 순환이나 근육·신경 쪽 문제일 가능성이 있습니다.
+
+**구체적으로 여쭤보겠습니다.**
+- 주로 언제 쥐가 나나요? (자다가, 걷다가, 오래 서 있을 때 등)
+- 다리의 어느 부위가 가장 심하게 쥐가 나나요? (종아리, 허벅지, 발바닥 등)
+- 평소 발이 차갑거나 얼음장처럼 느껴질 때가 있나요?"""
+        # 체중 / 다이어트
+        elif any(word in user_lower for word in ["다이어트", "살", "체중", "뚱뚱", "비만", "빠지", "감량"]):
+            conv_manager.update_context("main_symptom", "weight")
+            ai_response = """체중 때문에 신경도 많이 쓰이고, 스트레스도 크셨을 것 같습니다.
+
+한의학에서는 '얼마나 먹느냐'보다 **대사가 얼마나 잘 돌아가느냐**를 더 중요하게 봅니다.
+
+**몇 가지 여쭤보겠습니다.**
+- 식사량은 다른 사람들과 비교했을 때 어떤 편이신가요?
+- 붓기가 심하거나, 저녁이 되면 발목이 퉁퉁 붓는 느낌이 있으신가요?
+- 야식이나 군것질은 어느 정도로 자주 하시는 편인가요?"""
+        # 수면 / 불면
+        elif any(word in user_lower for word in ["잠", "수면", "불면", "못자", "새벽", "깨", "잠이 안"]):
+            conv_manager.update_context("main_symptom", "sleep")
+            ai_response = """수면이 잘 안 되신다는 건, 이미 몸이 꽤 오래 전부터 신호를 보내고 있었다는 뜻입니다.
+
+**조금만 더 구체적으로 여쭤보겠습니다.**
+- 잠드는 데 시간이 오래 걸리시나요, 아니면 자다가 자주 깨시나요?
+- 새벽 몇 시쯤 가장 많이 깨시나요?
+- 누웠을 때 생각이 많아서 머리가 멈추질 않는 느낌이 자주 있으신가요?"""
+        # 소화 / 속
+        elif any(word in user_lower for word in ["소화", "속", "더부룩", "체했", "명치", "배 아픈", "복통"]):
+            conv_manager.update_context("main_symptom", "digestion")
+            ai_response = """소화가 불편하면 먹는 즐거움도 사라지고, 하루 컨디션이 전반적으로 흐트러집니다.
+
+**증상을 조금 더 자세히 알려주세요.**
+- 식사 후 바로 속이 더부룩해지시나요, 아니면 시간이 지나서 더 불편해지나요?
+- 트림이 자주 나오거나, 명치 쪽이 답답한 느낌이 있으신가요?
+- 변비나 설사처럼 대변 패턴이 자주 바뀌는 편이신가요?"""
+        # 두통 / 어지럼
+        elif any(word in user_lower for word in ["두통", "머리 아파", "어지럼", "현기증"]):
+            conv_manager.update_context("main_symptom", "headache")
+            ai_response = """두통이나 어지럼증은 일상의 '질'을 완전히 떨어뜨려 버립니다.
+
+**패턴을 먼저 파악해보겠습니다.**
+- 통증이 머리 어느 쪽에 더 심하게 오나요? (앞이마, 관자놀이, 뒤통수 등)
+- 주로 어떤 때 더 심해지시나요? (스트레스 받을 때, 컴퓨터 오래 할 때 등)
+- 어지러울 때 메스꺼움이나 귀에서 소리가 나는 증상도 있으신가요?"""
+        # 그 외 → 기본 피로 루트
+        else:
+            conv_manager.update_context("main_symptom", "fatigue")
+            ai_response = """말씀만 들어도 요즘 많이 지치고 고단하신 게 느껴집니다.
+
+정확히 짚으려면, **언제 가장 힘든지**부터 보는 게 좋습니다.
+
+**언제 가장 기운이 쭉 빠지시나요?**
+- 아침에 눈을 뜰 때부터 힘이 없으신가요?
+- 오후 시간이 되면 갑자기 체력이 꺼지는 느낌이 드시나요?
+- 아니면 하루 종일 계속 '방전된 상태'처럼 느껴지시나요?"""
+
+        conv_manager.add_message("ai", ai_response)
+        conv_manager.update_stage("symptom_explore")
+        st.rerun()
 
     # ----------------------------------------
-    # 2-4. LLM 호출
+    # 2) 증상 탐색 → 수면 질문
     # ----------------------------------------
-    try:
-        response = _MODEL.generate_content(
-            [
-                {"role": "system", "parts": [system_prompt]},
-                # history는 system_prompt 안에 녹였으므로, 여기서는 마지막 발화만 user로 준다
-                {"role": "user", "parts": [user_input]},
-            ]
-        )
-        text = (response.text or "").strip()
-    except Exception:
-        base = _fallback_response(user_input, stage)
-        next_stage = _NEXT_STAGE_MAP.get(stage, "symptom_explore")
-        return f"{base}\n\n[[STAGE:{next_stage}]]"
+    elif current_stage == "symptom_explore":
+        main_symptom = context.get("main_symptom", "fatigue")
+
+        if main_symptom == "msk_pain":
+            ai_response = """통증 양상을 들어보니, 단순 피로성 근육통인지 구조적인 문제인지 구분이 필요해 보입니다.
+
+이번에는 **몸이 쉬어도 회복이 되는지**를 보겠습니다.
+
+**수면은 어떠신가요?**
+- 보통 몇 시쯤 잠자리에 드시나요?
+- 실제로 자는 시간은 몇 시간 정도 되시나요?
+- 자고 일어나도 통증과 피로가 그대로인 날이 더 많으신가요?"""
+        elif main_symptom == "leg_cramp":
+            ai_response = """다리 쪽 증상이 계속 이어지면 순환·수분대사·근육 피로가 함께 얽혀 있는 경우가 많습니다.
+
+이번에는 **밤 사이에 회복이 되는지**를 보겠습니다.
+
+**수면 상태를 여쭤볼게요.**
+- 평균적으로 몇 시간 정도 주무시나요?
+- 자고 일어나도 다리가 무겁거나 뻐근한 느낌이 남아 있나요?
+- 자다가 쥐 때문에 깨는 날이 자주 있으신가요?"""
+        elif main_symptom == "weight":
+            ai_response = """체중 문제는 결국, 자는 동안 몸이 얼마나 회복·정리되는지와도 깊게 연결되어 있습니다.
+
+이번에는 **수면과 피로도를 함께 보겠습니다.**
+- 보통 몇 시쯤 주무시고, 몇 시간 정도 주무시나요?
+- 자고 일어나도 몸이 가볍기보다는 여전히 무겁고 부은 느낌이 많으신가요?
+- 주말에 아무리 늦잠을 자도 피로가 잘 안 풀리는 편이신가요?"""
+        elif main_symptom == "sleep":
+            ai_response = """말씀해 주신 내용만 봐도 단순한 '잠 문제'라기보다, 몸의 에너지 시스템 전체가 흔들려 있는 상황일 수 있습니다.
+
+이제는 **잠의 '양'이 아니라 '질'**을 보겠습니다.
+
+**조금만 더 여쭙겠습니다.**
+- 자고 일어나도 머리가 맑기보다는, 안개 낀 느낌이 자주 있으신가요?
+- 낮에도 졸린데, 막상 누우면 잠이 잘 안 오는 날이 많으신가요?
+- 주말에도 평소와 비슷한 시간에 깨 버리는 편이신가요?"""
+        elif main_symptom == "digestion":
+            ai_response = """소화 이야기를 듣다 보면, 수면과 피로까지 같이 엮여 있는 경우가 많습니다.
+
+이번에는 **잠을 통해 몸이 얼마나 회복되고 있는지**를 확인해보겠습니다.
+
+**수면은 어떠세요?**
+- 평균 몇 시쯤 주무시고, 몇 시간 정도 주무시나요?
+- 자고 일어나도 속이 더부룩하거나, 아침부터 이미 피곤한 느낌이 드시나요?
+- 밤 늦게 먹고 바로 누우면 특히 더 불편해지는지요?"""
+        elif main_symptom == "headache":
+            ai_response = """두통·어지럼과 수면의 질은 굉장히 밀접하게 연결돼 있습니다.
+
+이번에는 **잠과 두통의 관계**를 살펴보겠습니다.
+
+**수면 상태를 알려주세요.**
+- 보통 몇 시간 정도 주무시나요?
+- 잠이 부족한 날에는 두통이 더 심해지는 편인가요?
+- 자고 일어나도 머리가 무겁고 띵한 느낌이 자주 있으신가요?"""
+        else:
+            ai_response = """그 시간대에 특히 힘드신다는 건, 단순히 '일이 많아서'라기보다 몸의 회복 시스템이 제 역할을 못 하고 있다는 신호일 수 있습니다.
+
+이번에는 **수면 상태**를 체크해보겠습니다.
+
+**잠은 어떠세요?**
+- 평균 몇 시쯤 잠자리에 드시나요?
+- 실제로 자는 시간은 몇 시간 정도 되시나요?
+- 자고 일어나도 개운한 날보다 축 늘어진 날이 더 많으신가요?"""
+
+        conv_manager.add_message("ai", ai_response)
+        conv_manager.update_stage("sleep_check")
+        st.rerun()
 
     # ----------------------------------------
-    # 2-5. 혹시 태그를 안 붙였으면 강제로 붙여주기
+    # 3) 수면 확인 → 소화 질문
     # ----------------------------------------
-    if "[[STAGE:" not in text:
-        next_stage = _NEXT_STAGE_MAP.get(stage, "symptom_explore")
-        text = text + f"\n\n[[STAGE:{next_stage}]]"
+    elif current_stage == "sleep_check":
+        ai_response = """수면 패턴을 보니, 단순 과로나 나이 탓으로만 넘기기에는 아까운 상태로 느껴집니다.
 
-    return text
+이번에는 **소화와 에너지 생성 능력**을 보겠습니다.
+
+**소화는 어떠세요?**
+- 식사 후에 더 피곤해지시나요, 아니면 공복일 때 더 힘드신가요?
+- 속이 더부룩하거나, 명치 쪽이 답답한 느낌이 자주 있으신가요?
+- 대변은 규칙적인 편인가요, 아니면 변비·설사가 번갈아 오나요?"""
+        conv_manager.add_message("ai", ai_response)
+        conv_manager.update_stage("digestion_check")
+        st.rerun()
+
+    # ----------------------------------------
+    # 4) 소화 확인 → 혀 안내 (여기서 처음 혀/거울 등장)
+    #    ❗ 이 단계가 '네가 소화 대답 한 번 한 뒤'에만 호출됨
+    # ----------------------------------------
+    elif current_stage == "digestion_check":
+        ai_response = """지금까지 말씀해 주신 증상, 수면, 소화 패턴을 하나로 묶어보면,
+몸이 에너지를 만들어내는 '비위(소화기) 공장'이 꽤 오랫동안 부담을 받아온 상태일 가능성이 높습니다.
+
+이제는 겉으로 보이는 **혀 상태**를 통해, 안쪽 장기의 상태를 한 번 더 교차 확인해보겠습니다.
+
+혀는 한의학에서 '몸 전체의 거울'처럼 보는 기관입니다.
+거울을 보시고 본인의 혀를 한 번 살펴보신 뒤,
+화면에 보이는 혀 사진 4개 중에서 가장 비슷한 것을 하나 선택해 주세요."""
+        conv_manager.add_message("ai", ai_response)
+        conv_manager.update_stage("tongue_select")
+        st.rerun()
+
+    # ----------------------------------------
+    # 5) 그 외 단계 → LLM 자유 응답 (판매 후속 대화 등)
+    # ----------------------------------------
+    else:
+        time.sleep(1.0)
+        ai_response = generate_ai_response(user_input, context, history_for_llm)
+        conv_manager.add_message("ai", ai_response)
+        st.rerun()
+
+# ============================================
+# 완료 후 버튼
+# ============================================
+if conv_manager.get_context().get("stage") == "complete":
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("새 상담 시작", use_container_width=True):
+            conv_manager.reset_conversation()
+            st.rerun()
+
+    with col2:
+        if st.button("상담 내역 보기", use_container_width=True):
+            with st.expander("상담 요약", expanded=True):
+                st.markdown(conv_manager.get_summary())
+
+# ============================================
+# 푸터
+# ============================================
+st.markdown(
+    """
+<div class="footer">
+    <b>IMD Strategic Consulting</b><br>
+    한의원 전용 AI 매출 엔진 | 전국 200개 한의원 도입 완료
+</div>
+""",
+    unsafe_allow_html=True,
+)
