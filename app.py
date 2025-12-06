@@ -5,9 +5,6 @@ IMD Strategic Consulting - AI Sales Bot (B2B)
 
 import streamlit as st
 import time
-from pathlib import Path
-import os
-
 from conversation_manager import get_conversation_manager
 from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
@@ -20,14 +17,6 @@ from config import (
     COLOR_BORDER,
     TONGUE_TYPES
 )
-
-from PIL import Image
-
-# ============================================
-# 경로 기본 세팅
-# ============================================
-BASE_DIR = Path(__file__).resolve().parent  # app.py 위치
-IMAGES_DIR = BASE_DIR / "images"            # images 폴더
 
 # ============================================
 # 페이지 설정
@@ -96,8 +85,7 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    /* 입력창 + 푸터 때문에 여유 크게 */
-    margin-bottom: 240px;
+    margin-bottom: 100px;
 }}
 
 .ai-msg {{
@@ -146,7 +134,7 @@ footer {{
 /* 입력창 */
 .stChatInput {{
     position: fixed !important;
-    bottom: 52px !important;  /* 푸터 위에 딱 올라오게 */
+    bottom: 60px !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
@@ -187,7 +175,7 @@ footer {{
     right: 0;
     width: 100%;
     background: white !important;
-    padding: 8px 20px 10px 20px;
+    padding: 12px 20px;
     text-align: center;
     font-size: 11px;
     color: #9CA3AF;
@@ -206,7 +194,7 @@ footer {{
     padding: 20px;
     border: 1px solid {COLOR_BORDER};
     border-radius: 12px;
-    margin: 16px 20px 260px 20px;
+    margin: 16px 20px 180px 20px;
 }}
 
 .stForm label {{
@@ -244,7 +232,6 @@ input::placeholder, textarea::placeholder {{
     
     .chat-area {{
         padding: 2px 16px 4px 16px !important;
-        margin-bottom: 260px;
     }}
     
     .ai-msg {{
@@ -321,70 +308,8 @@ chat_html += '</div>'
 st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
-# 이미지 경로 찾기 유틸 (여기서 최대한 다 맞춰줌)
-# ============================================
-def resolve_tongue_image_path(raw_path: str) -> Path | None:
-    """
-    config의 image 값(raw_path)을 받아서
-    - 절대경로 / 상대경로 / images 폴더 / 확장자 없음
-    전부 고려해서 실제 존재하는 Path를 리턴.
-    없으면 None.
-    """
-    if not raw_path:
-        return None
-
-    raw_path = raw_path.strip()
-    candidates = []
-
-    # 1) 절대경로인 경우
-    if os.path.isabs(raw_path):
-        candidates.append(Path(raw_path))
-
-    p = Path(raw_path)
-
-    # 2) 그대로 상대경로 (config에서 'images/xxx.png'로 줬을 때)
-    candidates.append(BASE_DIR / p)
-
-    # 3) images 폴더 기준 (config에서 'pale_tongue.png'만 줬을 때)
-    candidates.append(IMAGES_DIR / p.name)
-
-    # 4) 확장자가 없다면 .png / .jpg / .jpeg / .webp 붙여서 시도
-    if p.suffix == "":
-        for ext in [".png", ".jpg", ".jpeg", ".webp"]:
-            candidates.append(BASE_DIR / f"{raw_path}{ext}")
-            candidates.append(IMAGES_DIR / f"{p.name}{ext}")
-
-    # 우선 후보들 중에서 실제 존재하는 것 찾기
-    for c in candidates:
-        if c.exists():
-            return c
-
-    # 5) 그래도 못 찾으면, images 폴더 안에서 이름 비슷한 거라도 찾기
-    stem = p.stem.lower() if p.stem else raw_path.lower()
-    if IMAGES_DIR.exists():
-        for file in IMAGES_DIR.glob("*"):
-            if file.is_file() and file.stem.lower() == stem:
-                return file
-
-    return None
-
-# ============================================
 # 혀 사진 선택 (digestion_check 단계 후 표시)
 # ============================================
-from pathlib import Path
-from PIL import Image
-
-BASE_DIR = Path(__file__).resolve().parent
-IMAGES_DIR = BASE_DIR / "images"
-
-# 혀 타입별 이미지 파일명 강제 매핑 (config.py랑 별개로, 여기서 박제)
-TONGUE_IMAGE_FILES = {
-    "담백설": "pale_tongue.png",
-    "치흔설": "tooth_tongue.png",
-    "황태설": "yellow_tongue.png",
-    "자색설": "purple_tongue.png",
-}
-
 context = conv_manager.get_context()
 if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
     st.markdown("---")
@@ -392,43 +317,53 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
         f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:20px 0 10px;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
         unsafe_allow_html=True
     )
-
+    
+    # 디버깅 정보 표시
+    import os
+    st.write("🔍 디버깅 정보:")
+    st.write(f"현재 디렉토리: {os.getcwd()}")
+    st.write(f"images 폴더 존재: {os.path.exists('images')}")
+    if os.path.exists('images'):
+        st.write(f"images 폴더 내용: {os.listdir('images')}")
+    st.write(f"pale_tongue.png 존재: {os.path.exists('images/pale_tongue.png')}")
+    st.markdown("---")
+    
+    # 1x4 가로 배열로 혀 사진 표시
     cols = st.columns(4)
-
+    
+    from PIL import Image
+    
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            # 1) 이 혀 타입에 해당하는 파일명 가져오기
-            filename = TONGUE_IMAGE_FILES.get(tongue_key)
-
-            if filename:
-                image_path = IMAGES_DIR / filename
-            else:
-                image_path = None
-
+            # 혀 사진 표시 - PIL로 열어서 표시
+            image_path = tongue_data['image']
+            
             try:
-                if image_path and image_path.exists():
-                    img = Image.open(str(image_path))
-                    st.image(img, use_container_width=True)
-                else:
-                    # 이미지 못 찾으면 이모지로 대체
-                    raise FileNotFoundError(f"Image not found: {image_path}")
-            except Exception:
+                # PIL로 이미지 열기
+                img = Image.open(image_path)
+                st.image(img, use_container_width=True)
+                st.success(f"✅ 로드 성공")
+            except Exception as e:
+                # 에러 메시지 표시
+                st.error(f"❌ 에러: {str(e)[:50]}")
+                # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
                     f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
                     unsafe_allow_html=True
                 )
-
-            # 혀 이름
+            
+            # 이름 표시
             st.markdown(
                 f"<div style='text-align:center; font-size:13px; font-weight:600; margin:8px 0;'>{tongue_data['name']}</div>",
                 unsafe_allow_html=True
             )
-
+            
             # 선택 버튼
-            if st.button("선택", key=f"tongue_{tongue_key}", use_container_width=True):
+            if st.button(f"선택", key=f"tongue_{tongue_key}", use_container_width=True):
                 conv_manager.update_context('selected_tongue', tongue_key)
                 conv_manager.update_stage('tongue_select')
-
+                
+                # 혀 진단 메시지 추가
                 diagnosis_msg = f"""**{tongue_data['name']}** 선택하셨습니다.
 
 {tongue_data['analysis']}
@@ -461,12 +396,85 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
 폭발적인 매출 신화가 아닙니다. 
 다만 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 대신 떠받쳐주는 결과입니다."""
+                
                 conv_manager.add_message("ai", diagnosis_msg)
+                
+                # 건강 점수 계산
                 conv_manager.calculate_health_score()
-                conv_manager.update_stage('conversion')
-
+                conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
+                
                 st.rerun()
 
+# ============================================
+# 자동 CTA (시뮬레이션 완료 후)
+# ============================================
+chat_history = conv_manager.get_history()
+last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
+
+# 시뮬레이션 완료 판단 (6회 이상 대화 + AI 답변으로 끝)
+if len(chat_history) >= 6 and last_msg_is_ai and conv_manager.get_context()['stage'] != 'complete':
+    st.markdown("---")
+    st.markdown(
+        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">이 시스템을 한의원에 도입하시겠습니까?</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다</p>",
+        unsafe_allow_html=True
+    )
+    
+    with st.form("consulting_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            clinic_name = st.text_input("병원명", placeholder="서울한의원")
+        with col2:
+            director_name = st.text_input("원장님 성함", placeholder="홍길동")
+        
+        contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
+        
+        submitted = st.form_submit_button("무료 도입 견적서 받기", use_container_width=True)
+        
+        if submitted:
+            if not clinic_name or not director_name or not contact:
+                st.error("필수 정보를 모두 입력해주세요.")
+            else:
+                lead_data = {
+                    'name': director_name,
+                    'contact': contact,
+                    'symptom': f"병원명: {clinic_name}",
+                    'preferred_date': '즉시 상담 희망',
+                    'chat_summary': conv_manager.get_summary(),
+                    'source': 'IMD_Strategic_Consulting',
+                    'type': 'Oriental_Clinic'
+                }
+                
+                success, message = lead_handler.save_lead(lead_data)
+                
+                if success:
+                    completion_msg = f"""
+견적서 발송이 완료되었습니다.
+
+{director_name} 원장님, 감사합니다.
+
+{clinic_name}에 최적화된 AI 실장 시스템 견적서를 
+{contact}로 24시간 내 전송해드리겠습니다.
+
+포함 내용:
+- 맞춤형 시스템 구축 비용
+- 월 운영비 및 유지보수
+- 지역 독점권 계약 조건
+- ROI 예상 시뮬레이션
+
+담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
+"""
+                    conv_manager.add_message("ai", completion_msg)
+                    conv_manager.update_stage('complete')
+                    
+                    st.success("견적서 신청이 완료되었습니다!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(f"오류: {message}")
 
 # ============================================
 # 입력창
