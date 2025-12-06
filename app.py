@@ -310,6 +310,12 @@ st.markdown(chat_html, unsafe_allow_html=True)
 # ============================================
 # 혀 사진 선택 (digestion_check 단계 후 표시)
 # ============================================
+from pathlib import Path
+import os
+
+BASE_DIR = Path(__file__).resolve().parent  # app.py가 있는 폴더
+IMAGES_DIR = BASE_DIR / "images"            # images 폴더
+
 context = conv_manager.get_context()
 if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
     st.markdown("---")
@@ -317,41 +323,66 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
         f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:20px 0 10px;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
         unsafe_allow_html=True
     )
-    
-    # 1x4 가로 배열로 혀 사진 표시
+
     cols = st.columns(4)
-    
+
     from PIL import Image
-    import os
-    
+
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            # 혀 사진 표시 - PIL로 열어서 표시
-            image_path = tongue_data['image']
-            
+            # -------------------------------
+            # 1) config 에서 넘어온 값
+            #    - "pale_tongue.png" 일 수도 있고
+            #    - "images/pale_tongue.png" 일 수도 있음
+            # -------------------------------
+            raw_path = tongue_data.get("image", "")
+
+            image_path = None
+
+            # 절대 경로로 돼있으면 그대로 사용
+            if raw_path and os.path.isabs(raw_path):
+                candidate = Path(raw_path)
+                if candidate.exists():
+                    image_path = candidate
+            else:
+                # ① app.py 기준 상대경로 (예: "images/pale_tongue.png")
+                candidate1 = BASE_DIR / raw_path if raw_path else None
+                # ② images 폴더 + 파일명 (예: "pale_tongue.png"만 들어온 경우)
+                candidate2 = IMAGES_DIR / raw_path if raw_path else None
+
+                if candidate1 and candidate1.exists():
+                    image_path = candidate1
+                elif candidate2 and candidate2.exists():
+                    image_path = candidate2
+
+            # -------------------------------
+            # 2) 실제 이미지 렌더링
+            # -------------------------------
             try:
-                # PIL로 이미지 열기
-                img = Image.open(image_path)
-                st.image(img, use_container_width=True)
-            except Exception as e:
+                if image_path and image_path.exists():
+                    img = Image.open(str(image_path))
+                    st.image(img, use_container_width=True)
+                else:
+                    # 경로 안 맞으면 강제로 예외 발생시켜 이모지 fallback 사용
+                    raise FileNotFoundError(f"Image not found: {raw_path}")
+            except Exception:
                 # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
                     f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
                     unsafe_allow_html=True
                 )
-            
-            # 이름 표시
+
+            # 혀 이름 표시
             st.markdown(
                 f"<div style='text-align:center; font-size:13px; font-weight:600; margin:8px 0;'>{tongue_data['name']}</div>",
                 unsafe_allow_html=True
             )
-            
+
             # 선택 버튼
-            if st.button(f"선택", key=f"tongue_{tongue_key}", use_container_width=True):
+            if st.button("선택", key=f"tongue_{tongue_key}", use_container_width=True):
                 conv_manager.update_context('selected_tongue', tongue_key)
                 conv_manager.update_stage('tongue_select')
-                
-                # 혀 진단 메시지 추가
+
                 diagnosis_msg = f"""**{tongue_data['name']}** 선택하셨습니다.
 
 {tongue_data['analysis']}
@@ -384,14 +415,12 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
 폭발적인 매출 신화가 아닙니다. 
 다만 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 대신 떠받쳐주는 결과입니다."""
-                
                 conv_manager.add_message("ai", diagnosis_msg)
-                
-                # 건강 점수 계산
                 conv_manager.calculate_health_score()
-                conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
-                
+                conv_manager.update_stage('conversion')
+
                 st.rerun()
+
 
 # ============================================
 # 자동 CTA (시뮬레이션 완료 후)
