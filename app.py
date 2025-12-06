@@ -2,8 +2,8 @@
 """
 IMD Strategic Consulting - AI Sales Bot (B2B)
 한의원 원장님 대상 AI 실장 시스템 데모
-- 화이트 모드
-- AI 답변 부드러운 등장 애니메이션 (검은 글자)
+- 모바일 최적화: 인터리브 코멘터리 방식
+- 텍스트 대화 시뮬레이션: 원장이 환자 역할 체험
 """
 
 import time
@@ -11,19 +11,15 @@ from typing import Any
 
 import streamlit as st
 
-from conversation_manager import get_conversation_manager
-from prompt_engine import get_prompt_engine, generate_ai_response
-from lead_handler import LeadHandler
-
 # ============================================
-# 0. config 안전 로딩 (없어도 앱은 돌아가게)
+# 0. config 안전 로딩 (먼저 로드)
 # ============================================
 try:
-    import config as cfg  # type: ignore
+    import config as cfg
 except Exception:
     class _Dummy:
         pass
-    cfg = _Dummy()  # type: ignore
+    cfg = _Dummy()
 
 
 def _get(name: str, default: Any) -> Any:
@@ -41,6 +37,14 @@ COLOR_AI_BUBBLE = _get("COLOR_AI_BUBBLE", "#F9FAFB")
 COLOR_USER_BUBBLE = _get("COLOR_USER_BUBBLE", "#E5E7EB")
 COLOR_BORDER = _get("COLOR_BORDER", "#E5E7EB")
 
+SYMPTOM_CARDS = _get("SYMPTOM_CARDS", {})
+TONGUE_TYPES = _get("TONGUE_TYPES", {})
+
+# 모듈 import (config 로드 후)
+from conversation_manager import get_conversation_manager
+from prompt_engine import get_prompt_engine, generate_ai_response
+from lead_handler import LeadHandler
+
 # ============================================
 # 1. 페이지 설정
 # ============================================
@@ -52,244 +56,309 @@ st.set_page_config(
 )
 
 # ============================================
-# 2. CSS (화이트 모드 + AI 텍스트 애니메이션)
+# 2. CSS (모바일 최적화 - 인터리브 코멘터리 방식)
 # ============================================
 st.markdown(
-    f"""
+    """
 <style>
-/* 전체 흰색 배경 */
-.stApp {{
-    background: white !important;
-}}
+/* 전체 다크 테마 */
+.stApp { 
+    background-color: #121212; 
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; 
+    color: white; 
+}
 
-.main {{
-    background: white !important;
-}}
+.main {
+    background-color: #121212 !important;
+}
 
-.main .block-container {{
+.main .block-container {
     padding: 0 !important;
     max-width: 720px !important;
     margin: 0 auto !important;
-    background: white !important;
-}}
+    background-color: #121212 !important;
+}
 
-header, .stDeployButton {{
+header, .stDeployButton {
     display: none !important;
-}}
+}
 
-footer {{
+footer {
     display: none !important;
-}}
+}
 
 /* 타이틀 */
-.title-box {{
+.title-box {
     text-align: center;
     padding: 20px 20px 12px 20px;
-    background: white;
-}}
+    background-color: #121212;
+}
 
-.title-box h1 {{
+.title-box h1 {
     font-family: Arial, sans-serif !important;
-    font-size: 28px !important;  /* 제목 더 크게 */
+    font-size: 24px !important;
     font-weight: 700 !important;
-    color: {COLOR_PRIMARY} !important;
+    color: #D4AF37 !important;
     margin: 0 !important;
     letter-spacing: 0.5px !important;
-    white-space: nowrap !important;
-}}
+}
 
-.title-box .sub {{
+.title-box .sub {
     font-size: 12px;
-    color: #4B5563;
+    color: #888;
     margin-top: 4px;
-}}
+}
 
 /* 채팅 영역 */
-.chat-area {{
+.chat-area {
     padding: 12px 20px 4px 20px;
-    background: white !important;
+    background-color: #121212 !important;
     min-height: 150px;
     margin-bottom: 100px;
-}}
+}
 
-/* AI 메시지 버블 */
-.ai-msg {{
-    background: white !important;
-    color: #111827 !important;
-    padding: 16px 20px !important;
-    border-radius: 18px 18px 18px 4px !important;
-    margin: 18px 0 10px 0 !important;
-    max-width: 85% !important;
-    display: block !important;
-    font-size: 18px !important;
-    line-height: 1.6 !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
-    border: none !important;
-    outline: none !important;
-    clear: both !important;
-    animation: fadeInText 0.55s ease-out;
-}}
+/* 1. 환자용 UI (밝은 카드 스타일 - 환자 메시지) */
+.patient-card {
+    background-color: #ffffff;
+    color: #333;
+    padding: 16px 20px;
+    border-radius: 15px;
+    margin: 10px 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    border-left: 6px solid #2E8B57;
+    max-width: 85%;
+    display: inline-block;
+}
 
-.ai-msg::before, .ai-msg::after {{
-    content: none !important;
-    display: none !important;
-}}
+.patient-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+    line-height: 1.5;
+}
 
-/* AI 텍스트 (검은색 유지) */
-.ai-text {{
-    color: #111827 !important;
-}}
-
-/* 부드러운 그라데이션 느낌의 등장 애니메이션 */
-@keyframes fadeInText {{
-    0% {{
-        opacity: 0;
-        transform: translateY(10px);
-        filter: blur(3px);
-    }}
-    50% {{
-        opacity: 0.7;
-        transform: translateY(3px);
-        filter: blur(1.5px);
-    }}
-    100% {{
-        opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
-    }}
-}}
-
-/* 사용자 메시지 */
-.user-msg {{
-    background: {COLOR_USER_BUBBLE} !important;
-    color: #111827 !important;
-    padding: 12px 18px !important;
-    border-radius: 18px 18px 4px 18px !important;
-    margin: 8px 0 !important;
-    max-width: 70% !important;
-    display: inline-block !important;
-    font-size: 16px !important;
-    line-height: 1.4 !important;
-    border: none !important;
-    outline: none !important;
-}}
-
-.msg-right {{
+/* 사용자 메시지 우측 정렬 */
+.msg-right {
     text-align: right !important;
     clear: both !important;
     display: block !important;
     width: 100% !important;
     margin-top: 16px !important;
-}}
+}
+
+/* 2. AI 원장님용 로그 (어두운 터미널 스타일) */
+.admin-log {
+    background-color: #000;
+    color: #00E5FF;
+    padding: 15px 18px;
+    border-radius: 10px;
+    margin: 5px 0 25px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    border: 1px solid #333;
+    animation: fadeIn 0.5s ease-in-out;
+    max-width: 90%;
+}
+
+.log-header {
+    color: #D4AF37;
+    font-weight: bold;
+    font-size: 11px;
+    margin-bottom: 8px;
+    display: block;
+    border-bottom: 1px solid #333;
+    padding-bottom: 5px;
+    letter-spacing: 1px;
+}
+
+.log-highlight {
+    color: #ffff00;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.log-msg {
+    color: #00E5FF;
+    line-height: 1.5;
+}
+
+/* AI 메시지 (일반 대화용 - 기존 스타일 유지) */
+.ai-msg {
+    background-color: #1a1a1a !important;
+    color: #E0E0E0 !important;
+    padding: 16px 20px !important;
+    border-radius: 15px !important;
+    margin: 18px 0 10px 0 !important;
+    max-width: 85% !important;
+    display: block !important;
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+    border-left: 3px solid #D4AF37 !important;
+    animation: fadeInText 0.55s ease-out;
+}
+
+/* 부드러운 등장 애니메이션 */
+@keyframes fadeInText {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+        filter: blur(3px);
+    }
+    50% {
+        opacity: 0.7;
+        transform: translateY(3px);
+        filter: blur(1.5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
 /* 입력창 */
-.stChatInput {{
+.stChatInput {
     position: fixed !important;
     bottom: 60px !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    background: white !important;
+    background-color: #1a1a1a !important;
     padding: 10px 0 !important;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.08) !important;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.5) !important;
     z-index: 999 !important;
     margin: 0 !important;
-}}
+}
 
-.stChatInput > div {{
+.stChatInput > div {
     max-width: 680px !important;
     margin: 0 auto !important;
-    border: 1px solid #E5E7EB !important;
+    border: 1px solid #333 !important;
     border-radius: 24px !important;
-    background: white !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
-}}
+    background-color: #2a2a2a !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+}
 
-.stChatInput input {{
-    color: #1F2937 !important;
-    background: white !important;
-    -webkit-text-fill-color: #1F2937 !important;
-}}
+.stChatInput input {
+    color: #E0E0E0 !important;
+    background-color: #2a2a2a !important;
+    -webkit-text-fill-color: #E0E0E0 !important;
+}
 
-.stChatInput input::placeholder {{
-    color: #D1D5DB !important;
+.stChatInput input::placeholder {
+    color: #666 !important;
     font-size: 15px !important;
     opacity: 1 !important;
-    -webkit-text-fill-color: #D1D5DB !important;
-}}
+    -webkit-text-fill-color: #666 !important;
+}
 
 /* 푸터 */
-.footer {{
+.footer {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     width: 100%;
-    background: white !important;
+    background-color: #1a1a1a !important;
     padding: 12px 20px;
     text-align: center;
     font-size: 11px;
-    color: #9CA3AF;
-    border-top: 1px solid {COLOR_BORDER};
+    color: #666;
+    border-top: 1px solid #333;
     z-index: 998;
-}}
+}
 
-.footer b {{
-    color: {COLOR_TEXT};
+.footer b {
+    color: #D4AF37;
     font-weight: 600;
-}}
+}
 
 /* 폼 */
-.stForm {{
-    background: white;
+.stForm {
+    background-color: #1a1a1a;
     padding: 20px;
-    border: 1px solid {COLOR_BORDER};
+    border: 1px solid #333;
     border-radius: 12px;
     margin: 16px 20px 180px 20px;
-}}
+}
 
-.stForm label {{
-    color: #1F2937 !important;
+.stForm label {
+    color: #E0E0E0 !important;
     font-weight: 500 !important;
     font-size: 14px !important;
-}}
+}
 
-input, textarea, select {{
-    border: 1px solid {COLOR_BORDER} !important;
+input, textarea, select {
+    border: 1px solid #333 !important;
     border-radius: 8px !important;
-    background: white !important;
-    color: #1F2937 !important;
-}}
+    background-color: #2a2a2a !important;
+    color: #E0E0E0 !important;
+}
 
-input::placeholder, textarea::placeholder {{
-    color: #D1D5DB !important;
+input::placeholder, textarea::placeholder {
+    color: #666 !important;
     opacity: 1 !important;
-}}
+}
+
+/* 버튼 */
+.stButton > button {
+    width: 100%;
+    background-color: #2a2a2a;
+    border: 2px solid #D4AF37;
+    color: #D4AF37;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:hover {
+    background-color: #D4AF37;
+    color: #121212;
+}
 
 /* 모바일 */
-@media (max-width: 768px) {{
-    .main .block-container {{
+@media (max-width: 768px) {
+    .main .block-container {
         padding-top: 0 !important;
-    }}
+    }
     
-    .title-box {{
-        padding: 2px 16px 2px 16px !important;
-    }}
+    .title-box {
+        padding: 16px 16px 12px 16px !important;
+    }
     
-    .title-box h1 {{
-        font-size: 22px !important;
-        line-height: 1.1 !important;
-    }}
+    .title-box h1 {
+        font-size: 20px !important;
+        line-height: 1.2 !important;
+    }
     
-    .chat-area {{
-        padding: 2px 16px 4px 16px !important;
-    }}
+    .chat-area {
+        padding: 8px 16px 4px 16px !important;
+    }
     
-    .ai-msg {{
-        font-size: 16px !important;
-        padding: 14px 18px !important;
-    }}
-}}
+    .ai-msg, .admin-log {
+        font-size: 14px !important;
+        padding: 14px 16px !important;
+    }
+    
+    .patient-card {
+        font-size: 15px !important;
+        padding: 14px 16px !important;
+    }
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -302,7 +371,12 @@ conv_manager = get_conversation_manager()
 prompt_engine = get_prompt_engine()
 lead_handler = LeadHandler()
 
-# B2B 데모용 첫 메시지 세팅
+# 모드 초기화
+if "mode" not in st.session_state:
+    st.session_state.mode = "simulation"  # simulation → closing
+    st.session_state.conversation_count = 0
+
+# 첫 메시지 세팅
 if "app_initialized" not in st.session_state:
     initial_msg = (
         "안녕하십니까, 원장님.\n\n"
@@ -318,18 +392,17 @@ if "app_initialized" not in st.session_state:
     )
     conv_manager.add_message("ai", initial_msg)
     st.session_state.app_initialized = True
-    st.session_state.mode = "simulation"  # simulation → closing
-    st.session_state.conversation_count = 0
+    conv_manager.update_stage("simulation")
 
 # ============================================
 # 4. 헤더
 # ============================================
 st.markdown(
-    f"""
+    """
 <div class="title-box">
-    <h1>IMD MEDICAL CUNSULTING</h1>
+    <h1>💼 IMD MEDICAL CONSULTING</h1>
     <div class="sub">원장님의 진료 철학을 학습한 'AI 수석 실장' 데모</div>
-    <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">
+    <div class="sub" style="font-size: 11px; color: #666; margin-top: 4px;">
         엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)
     </div>
 </div>
@@ -338,19 +411,69 @@ st.markdown(
 )
 
 # ============================================
-# 5. 채팅 히스토리 출력
+# 5. 채팅 히스토리 출력 (인터리브 방식)
 # ============================================
 chat_html = '<div class="chat-area">'
 
-for msg in conv_manager.get_history():
+for idx, msg in enumerate(conv_manager.get_history()):
     if msg["role"] == "ai":
+        # AI 메시지
         chat_html += (
-            f'<div class="ai-msg"><div class="ai-text">{msg["text"]}</div></div>'
+            f'<div class="ai-msg">{msg["text"]}</div>'
         )
     elif msg["role"] == "user":
+        # 환자(원장) 메시지 - 흰색 카드
         chat_html += (
-            f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
+            f'<div class="msg-right">'
+            f'<div class="patient-card">'
+            f'<div class="patient-text">{msg["text"]}</div>'
+            f'</div></div>'
         )
+        
+        # 사용자 메시지 바로 다음에 AI 분석 로그 삽입
+        metadata = msg.get("metadata", {})
+        
+        # 첫 번째 메시지: 증상 파악
+        if idx == 1 and st.session_state.conversation_count >= 1:
+            chat_html += """
+<div class="admin-log">
+    <span class="log-header">🎯 AI SYSTEM LOG</span>
+    <div class="log-msg">
+        <b>TARGET DETECTED</b><br>
+        환자 증상 키워드: <span class="log-highlight">'피곤', '만성'</span><br>
+        → 고가 비급여(공진단/녹용) 타겟군 식별<br>
+        → <b>'기력 회복 장기 프로그램'</b> 세일즈 시나리오 가동
+    </div>
+</div>
+"""
+        
+        # 두 번째 메시지: 패턴 분석
+        elif idx == 3 and st.session_state.conversation_count >= 2:
+            chat_html += """
+<div class="admin-log">
+    <span class="log-header">📊 DEEP ANALYSIS</span>
+    <div class="log-msg">
+        <b>패턴 심화 분석 완료</b><br>
+        진단: <span class="log-highlight">만성 피로 + 회복 불가 패턴</span><br>
+        → 단순 휴식으로는 회복 불가함을 인지시킴<br>
+        → 환자의 <b>위기감 증폭 중</b> (전환율 ↑)
+    </div>
+</div>
+"""
+        
+        # 세 번째 메시지: 클로징 준비
+        elif idx >= 5 and st.session_state.conversation_count >= 3:
+            chat_html += """
+<div class="admin-log" style="border: 1px solid #D4AF37;">
+    <span class="log-header" style="color:#D4AF37;">💡 SALES OPPORTUNITY</span>
+    <div class="log-msg">
+        <b>원장님, 지금입니다.</b><br><br>
+        환자는 자신의 상태가 '심각하다'고 인지했습니다.<br>
+        이 타이밍에 <span class="log-highlight">'프리미엄 3개월 프로그램'</span>을<br>
+        제안하면 동의율이 <b>80% 이상</b>으로 올라갑니다.
+    </div>
+</div>
+"""
 
 chat_html += "</div>"
 st.markdown(chat_html, unsafe_allow_html=True)
@@ -368,13 +491,13 @@ if (
 ):
     st.markdown("---")
     st.markdown(
-        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">'
+        '<div style="text-align:center; color:#D4AF37; font-weight:600; font-size:18px; margin:20px 0 10px;">'
         "이 시스템을 한의원에 도입하시겠습니까?"
         "</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>"
+        "<p style='text-align:center; color:#888; font-size:14px; margin-bottom:20px;'>"
         "지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다"
         "</p>",
         unsafe_allow_html=True,
@@ -462,7 +585,7 @@ if user_input:
 3. 그 정보를 바탕으로 원장님 병원의 진료 철학에 맞게 설명하고,
 4. 마지막에는 자연스럽게 진맥 → 한약/침/추나 → 생활 교정으로 이어지게 설계됩니다.
 
-여기까지는 ‘만성 피로 한 명의 환자’ 이야기에 불과합니다.
+여기까지는 '만성 피로 한 명의 환자' 이야기에 불과합니다.
 
 이제 상상해보십시오.
 
@@ -484,17 +607,18 @@ AI가 온라인에서 조금씩 대신 떠받쳐주는 구조입니다.
 
 여기서 딱 한 가지 질문만 남습니다.
 
-“우리 병원에 붙이면, 실제 숫자가 얼마나 바뀔까?”
+"우리 병원에 붙이면, 실제 숫자가 얼마나 바뀔까?"
 
 월 신규 환자 수, 주요 클리닉(예: 피로/다이어트/추나)의 비중,
 온라인 문의 비율 정도만 알면,
-‘원장님 병원 기준’으로 시뮬레이션을 그려볼 수 있습니다.
+'원장님 병원 기준'으로 시뮬레이션을 그려볼 수 있습니다.
 
 이 아래에 병원명, 성함, 연락처만 남겨주시면,
 24시간 안에 원장님 병원 데이터를 기준으로 한
 간단한 도입 시나리오와 견적 요약본을 보내드리겠습니다.
 """
         conv_manager.add_message("ai", closing_msg)
+        conv_manager.update_stage("conversion")
         st.rerun()
 
     else:
