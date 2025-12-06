@@ -94,7 +94,7 @@ footer {{
 
 .title-box h1 {{
     font-family: Arial, sans-serif !important;
-    font-size: 30px !important;  /* 28px → 30px */
+    font-size: 30px !important;
     font-weight: 700 !important;
     color: {COLOR_PRIMARY} !important;
     margin: 0 !important;
@@ -103,7 +103,7 @@ footer {{
 }}
 
 .title-box .sub {{
-    font-size: 14px !important;  /* 12px → 14px */
+    font-size: 14px !important;
     color: #4B5563;
     margin-top: 4px;
 }}
@@ -113,7 +113,7 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    margin-bottom: 200px !important;  /* 하단 여백 증가 */
+    margin-bottom: 200px !important;
 }}
 
 /* 모바일에서도 columns를 가로로 유지 */
@@ -131,7 +131,7 @@ footer {{
     margin: 18px 0 10px 0 !important;
     max-width: 85% !important;
     display: block !important;
-    font-size: 20px !important;  /* 18px → 20px */
+    font-size: 20px !important;
     line-height: 1.6 !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
     border: none !important;
@@ -173,12 +173,12 @@ footer {{
 .patient-card {{
     background: {COLOR_USER_BUBBLE} !important;
     color: #111827 !important;
-    padding: 14px 20px !important;  /* 12px → 14px */
+    padding: 14px 20px !important;
     border-radius: 18px 18px 4px 18px !important;
     margin: 8px 0 !important;
     max-width: 70% !important;
     display: inline-block !important;
-    font-size: 18px !important;  /* 16px → 18px */
+    font-size: 18px !important;
     line-height: 1.4 !important;
     border: none !important;
     outline: none !important;
@@ -206,16 +206,16 @@ footer {{
     margin: 8px 0 20px 0 !important;
     max-width: 90% !important;
     font-family: 'Courier New', monospace;
-    font-size: 15px !important;  /* 13px → 15px */
+    font-size: 15px !important;
     line-height: 1.6 !important;
     border: 1px solid #E5E7EB !important;
     animation: fadeIn 0.5s ease-in-out;
 }}
 
 .log-header {{
-    color: #059669 !important;  /* 초록색 */
+    color: #059669 !important;
     font-weight: bold;
-    font-size: 13px !important;  /* 11px → 13px */
+    font-size: 13px !important;
     margin-bottom: 8px;
     display: block;
     border-bottom: 1px solid #E5E7EB;
@@ -224,7 +224,7 @@ footer {{
 }}
 
 .log-highlight {{
-    color: #DC2626 !important;  /* 빨간색 */
+    color: #DC2626 !important;
     font-weight: bold;
     text-decoration: underline;
 }}
@@ -271,13 +271,13 @@ footer {{
 .stChatInput input {{
     color: #1F2937 !important;
     background: white !important;
-    font-size: 17px !important;  /* 15px → 17px */
+    font-size: 17px !important;
     -webkit-text-fill-color: #1F2937 !important;
 }}
 
 .stChatInput input::placeholder {{
     color: #D1D5DB !important;
-    font-size: 17px !important;  /* 15px → 17px */
+    font-size: 17px !important;
     opacity: 1 !important;
     -webkit-text-fill-color: #D1D5DB !important;
 }}
@@ -292,7 +292,7 @@ footer {{
     background: white !important;
     padding: 12px 20px;
     text-align: center;
-    font-size: 13px !important;  /* 11px → 13px */
+    font-size: 13px !important;
     color: #9CA3AF;
     border-top: 1px solid {COLOR_BORDER};
     z-index: 998;
@@ -315,7 +315,7 @@ footer {{
 .stForm label {{
     color: #1F2937 !important;
     font-weight: 500 !important;
-    font-size: 16px !important;  /* 14px → 16px */
+    font-size: 16px !important;
 }}
 
 input, textarea, select {{
@@ -323,7 +323,7 @@ input, textarea, select {{
     border-radius: 8px !important;
     background: white !important;
     color: #1F2937 !important;
-    font-size: 16px !important;  /* +2px */
+    font-size: 16px !important;
 }}
 
 input::placeholder, textarea::placeholder {{
@@ -338,7 +338,7 @@ input::placeholder, textarea::placeholder {{
     border: 2px solid {COLOR_PRIMARY};
     color: {COLOR_PRIMARY};
     font-weight: 600;
-    font-size: 16px !important;  /* +2px */
+    font-size: 16px !important;
     padding: 12px 24px;
     border-radius: 12px;
     transition: all 0.3s ease;
@@ -377,27 +377,40 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .title-box h1 {{
-        font-size: 24px !important;  /* 22px → 24px */
+        font-size: 24px !important;
         line-height: 1.1 !important;
     }}
     
     .chat-area {{
         padding: 2px 16px 4px 16px !important;
-        margin-bottom: 250px !important;  /* 모바일 하단 여백 더 증가 */
+        margin-bottom: 250px !important;
     }}
     
     .ai-msg {{
-        font-size: 18px !important;  /* 16px → 18px */
+        font-size: 18px !important;
         padding: 14px 18px !important;
     }}
     
     .patient-card {{
-        font-size: 17px !important;  /* 15px → 17px */
+        font-size: 17px !important;
     }}
     
     .admin-log {{
-        font-size: 14px !important;  /* 12px → 14px */
+        font-size: 14px !important;
     }}
+}}
+
+/* 혀 선택 안내 메시지 */
+.tongue-guide {{
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    z-index: 999;
 }}
 </style>
 """,
@@ -413,7 +426,7 @@ lead_handler = LeadHandler()
 
 # 모드 초기화
 if "mode" not in st.session_state:
-    st.session_state.mode = "simulation"  # simulation → closing
+    st.session_state.mode = "simulation"
     st.session_state.conversation_count = 0
 
 # 첫 메시지 세팅
@@ -448,29 +461,99 @@ st.markdown(
 )
 
 # ============================================
-# 4.5 사용자 입력 받기 (먼저 처리)
+# 5. 채팅 히스토리 출력 (HTML 방식)
 # ============================================
-user_input = st.chat_input("원장님의 생각을 말씀해주세요")
+st.markdown('<div class="chat-area">', unsafe_allow_html=True)
 
-# 입력이 있으면 즉시 처리
-if user_input:
-    current_stage = conv_manager.get_context().get("stage", "symptom_explore")
+for idx, msg in enumerate(conv_manager.get_history()):
+    if msg["role"] == "ai":
+        st.markdown(f'<div class="ai-msg">{msg["text"]}</div>', unsafe_allow_html=True)
+    elif msg["role"] == "user":
+        st.markdown(
+            f'<div class="msg-right">'
+            f'<div class="patient-card">'
+            f'<div class="patient-text">{msg["text"]}</div>'
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================
+# 6. 혀 선택 UI (tongue_select 단계에서만 표시)
+# ============================================
+current_stage = conv_manager.get_context().get("stage", "symptom_explore")
+
+if current_stage == "tongue_select":
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='text-align:center; color:#1F2937; font-weight:600; font-size:18px; margin:20px 0;'>"
+        "거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요"
+        "</div>",
+        unsafe_allow_html=True,
+    )
     
-    # 혀 타입 텍스트 자동 인식
-    detected_tongue = None
-    for tongue_key in ['담백설', '치흔설', '황태설', '자색설']:
-        if tongue_key in user_input:
-            detected_tongue = tongue_key
-            break
+    # 가로 4장 일렬 배치
+    c1, c2, c3, c4 = st.columns(4)
     
-    # 혀 선택 처리
-    if detected_tongue and current_stage == "tongue_select":
-        st.session_state.tongue_selected = True
-        conv_manager.update_context("selected_tongue", detected_tongue)
-        conv_manager.add_message("user", f"[선택: {user_input}]")
-        
-        info = TONGUE_TYPES[detected_tongue]
-        analysis_msg = f"""
+    tongue_types_list = ['담백설', '황태설', '치흔설', '자색설']
+    columns = [c1, c2, c3, c4]
+    
+    for col, tongue_type in zip(columns, tongue_types_list):
+        with col:
+            if tongue_type in TONGUE_TYPES:
+                info = TONGUE_TYPES[tongue_type]
+                image_path = info.get('image', '')
+                
+                if image_path:
+                    try:
+                        st.image(image_path, use_container_width=True)
+                    except Exception:
+                        st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+                
+                if st.button(f"{info['visual']}", key=f"btn_{tongue_type}", use_container_width=True):
+                    st.session_state.tongue_selected = True
+                    st.session_state.selected_tongue_type = tongue_type
+                    conv_manager.update_context("selected_tongue", tongue_type)
+                    conv_manager.add_message("user", f"[선택: {info['visual']}]")
+                    
+                    # 치흔설 특별 메시지
+                    if tongue_type == '치흔설':
+                        analysis_msg = f"""
+<b>보셨습니까 원장님?</b>
+
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
+
+혀 가장자리가 울퉁불퉁하죠? 
+혀가 부어서 이빨에 눌린 자국입니다.
+<b>몸이 물 먹은 솜처럼 퉁퉁 불어 순환이 막혔다는 명백한 증거</b>입니다.
+
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
+
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
+
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
+
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
+
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
+
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
+"""
+                    else:
+                        analysis_msg = f"""
 <b>보셨습니까 원장님?</b>
 
 방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
@@ -499,84 +582,14 @@ if user_input:
 이 아래에 병원명, 성함, 연락처만 남겨주시면,
 24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
-        conv_manager.add_message("ai", analysis_msg)
-        conv_manager.update_stage("conversion")
-        st.session_state.mode = "closing"
-    
-    # 일반 메시지 처리
-    else:
-        conv_manager.add_message("user", user_input, metadata={"type": "text"})
-        
-        if "conversation_count" not in st.session_state:
-            st.session_state.conversation_count = 0
-        st.session_state.conversation_count += 1
-        
-        # 1단계
-        if st.session_state.conversation_count == 1:
-            response_msg = """
-원장님, 환자가 피로를 호소하고 있습니다.
-
-<b>질문 1단계: 시간대 특정</b>
-
-"언제 제일 힘드세요? 아침에 눈뜰 때인가요, 아니면 오후 3시쯤인가요?"
-"""
-            conv_manager.add_message("ai", response_msg)
-            conv_manager.update_stage("sleep_check")
-        
-        # 2단계
-        elif st.session_state.conversation_count == 2:
-            response_msg = """
-역시 그렇군요. 아침부터 피곤하다는 건 단순 과로가 아닙니다.
-
-<b>질문 2단계: 소화기능 확인</b>
-
-"주무시고 나서도 힘드시다면, 몸의 에너지 충전 기능 자체에 문제가 있습니다.
-혹시 식사 후에 유독 졸리거나 속이 더부룩하진 않으신가요?"
-"""
-            conv_manager.add_message("ai", response_msg)
-            conv_manager.update_stage("digestion_check")
-        
-        # 3단계
-        elif st.session_state.conversation_count == 3:
-            response_msg = """
-<b>분석 완료</b>
-
-환자분의 증상을 정리하면:
-- ✓ 아침 기상 시 피로 (수면 회복력 저하)
-- ✓ 식후 졸음/더부룩함 (비위 기능 저하)
-
-이는 <b>비기허(脾氣虛) + 습담(濕痰) 정체</b>의 전형적 패턴입니다.
-
-<b>마지막 단계: 시각적 증거 확보</b>
-
-이제 혀 상태를 확인하여, 환자가 스스로 "내 몸이 망가졌구나"를 깨닫게 만들겠습니다.
-거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요.
-"""
-            conv_manager.add_message("ai", response_msg)
-            conv_manager.update_stage("tongue_select")
+                    
+                    conv_manager.add_message("ai", analysis_msg)
+                    conv_manager.update_stage("conversion")
+                    st.session_state.mode = "closing"
+                    st.rerun()
 
 # ============================================
-# 5. 채팅 히스토리 출력 (HTML 방식)
-# ============================================
-st.markdown('<div class="chat-area">', unsafe_allow_html=True)
-
-for idx, msg in enumerate(conv_manager.get_history()):
-    if msg["role"] == "ai":
-        st.markdown(f'<div class="ai-msg">{msg["text"]}</div>', unsafe_allow_html=True)
-    elif msg["role"] == "user":
-        st.markdown(
-            f'<div class="msg-right">'
-            f'<div class="patient-card">'
-            f'<div class="patient-text">{msg["text"]}</div>'
-            f'</div></div>',
-            unsafe_allow_html=True
-        )
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# ============================================
-# 6. CTA 폼 (closing 모드 또는 conversion 단계에서 표시)
+# 7. CTA 폼 (closing 모드 또는 conversion 단계에서 표시)
 # ============================================
 current_stage = conv_manager.get_context().get("stage", "")
 current_mode = st.session_state.get("mode", "simulation")
@@ -649,271 +662,83 @@ if (
 
                     st.success("견적서 신청이 완료되었습니다!")
                     time.sleep(1)
+                    st.rerun()
                     
                 else:
                     st.error(f"오류: {message}")
 
 # ============================================
-# 7. 입력창 + AI 응답
+# 8. 입력창 (혀 선택 단계가 아닐 때만)
 # ============================================
-
-# 현재 대화 단계 확인
-current_stage = conv_manager.get_context().get("stage", "symptom_explore")
-
-# 혀 선택 단계인 경우 → 버튼 UI 표시
-if current_stage == "tongue_select":
-    # tongue_selected 조건 제거 - 항상 표시하여 DOM 안정화
-    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-    st.markdown(
-        "<div style='text-align:center; color:#1F2937; font-weight:600; font-size:18px; margin:20px 0;'>"
-        "거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+if current_stage != "tongue_select" and current_stage != "complete":
+    user_input = st.chat_input("원장님의 생각을 말씀해주세요")
     
-    # 가로 4장 일렬 배치
-    c1, c2, c3, c4 = st.columns(4)
-    
-    with c1:
-        # 담백설
-        tongue_type = '담백설'
-        if tongue_type in TONGUE_TYPES:
-            info = TONGUE_TYPES[tongue_type]
-            image_path = info.get('image', '')
-            
-            if image_path:
-                try:
-                    st.image(image_path, use_container_width=True)
-                except Exception:
-                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            
-            if st.button(f"{info['visual']}", key="btn_담백설", use_container_width=True):
-                st.session_state.tongue_selected = True
-                st.session_state.selected_tongue_type = tongue_type
-                conv_manager.update_context("selected_tongue", tongue_type)
-                conv_manager.add_message("user", f"[선택: {info['visual']}]")
-                
-                analysis_msg = f"""
-<b>보셨습니까 원장님?</b>
-
-방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
-
-{info['analysis']}
-
-제가 한 일:
-1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
-2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
-3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
-
-저는 환자의 말을 그냥 듣지 않습니다.
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
-
-이 시스템을 원장님 병원에 24시간 붙여놓으면,
-밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
-<b>예약 버튼</b>을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-                conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("conversion")
-                st.session_state.mode = "closing"
-                
-    
-    with c2:
-        # 황태설
-        tongue_type = '황태설'
-        if tongue_type in TONGUE_TYPES:
-            info = TONGUE_TYPES[tongue_type]
-            image_path = info.get('image', '')
-            
-            if image_path:
-                try:
-                    st.image(image_path, use_container_width=True)
-                except Exception:
-                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            
-            if st.button(f"{info['visual']}", key="btn_황태설", use_container_width=True):
-                st.session_state.tongue_selected = True
-                st.session_state.selected_tongue_type = tongue_type
-                conv_manager.update_context("selected_tongue", tongue_type)
-                conv_manager.add_message("user", f"[선택: {info['visual']}]")
-                
-                analysis_msg = f"""
-<b>보셨습니까 원장님?</b>
-
-방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
-
-{info['analysis']}
-
-제가 한 일:
-1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
-2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
-3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
-
-저는 환자의 말을 그냥 듣지 않습니다.
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
-
-이 시스템을 원장님 병원에 24시간 붙여놓으면,
-밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
-<b>예약 버튼</b>을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-                conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("conversion")
-                st.session_state.mode = "closing"
-                
-    
-    with c3:
-        # 치흔설
-        tongue_type = '치흔설'
-        if tongue_type in TONGUE_TYPES:
-            info = TONGUE_TYPES[tongue_type]
-            image_path = info.get('image', '')
-            
-            if image_path:
-                try:
-                    st.image(image_path, use_container_width=True)
-                except Exception:
-                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            
-            if st.button(f"{info['visual']}", key="btn_치흔설", use_container_width=True):
-                st.session_state.tongue_selected = True
-                st.session_state.selected_tongue_type = tongue_type
-                conv_manager.update_context("selected_tongue", tongue_type)
-                conv_manager.add_message("user", f"[선택: {info['visual']}]")
-                
-                analysis_msg = f"""
-<b>보셨습니까 원장님?</b>
-
-방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
-
-혀 가장자리가 울퉁불퉁하죠? 
-혀가 부어서 이빨에 눌린 자국입니다.
-<b>몸이 물 먹은 솜처럼 퉁퉁 불어 순환이 막혔다는 명백한 증거</b>입니다.
-
-제가 한 일:
-1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
-2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
-3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
-
-저는 환자의 말을 그냥 듣지 않습니다.
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
-
-이 시스템을 원장님 병원에 24시간 붙여놓으면,
-밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
-<b>예약 버튼</b>을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-                conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("conversion")
-                st.session_state.mode = "closing"
-                
-    
-    with c4:
-        # 자색설
-        tongue_type = '자색설'
-        if tongue_type in TONGUE_TYPES:
-            info = TONGUE_TYPES[tongue_type]
-            image_path = info.get('image', '')
-            
-            if image_path:
-                try:
-                    st.image(image_path, use_container_width=True)
-                except Exception:
-                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
-            
-            if st.button(f"{info['visual']}", key="btn_자색설", use_container_width=True):
-                st.session_state.tongue_selected = True
-                st.session_state.selected_tongue_type = tongue_type
-                conv_manager.update_context("selected_tongue", tongue_type)
-                conv_manager.add_message("user", f"[선택: {info['visual']}]")
-                
-                analysis_msg = f"""
-<b>보셨습니까 원장님?</b>
-
-방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
-
-{info['analysis']}
-
-제가 한 일:
-1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
-2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
-3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
-
-환자는 이제 자신의 몸이 <b>"쉬어서 낫는 단계가 아니다"</b>는 걸 알았습니다.
-
-저는 환자의 말을 그냥 듣지 않습니다.
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
-
-이 시스템을 원장님 병원에 24시간 붙여놓으면,
-밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
-<b>예약 버튼</b>을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-                conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("conversion")
-                st.session_state.mode = "closing"
-                
-
-# 일반 텍스트 입력
-        # 로딩 연출 (1초 대기)
-        with st.spinner("🔬 환자 데이터 분석 중..."):
-            time.sleep(1)  # 1초 로딩
-            ai_response = generate_ai_response(user_input, context, history)
-
-        conv_manager.add_message("ai", ai_response)
+    if user_input:
+        conv_manager.add_message("user", user_input, metadata={"type": "text"})
         
-        # 응답에 "혀" 키워드가 있으면 자동으로 혀 선택 단계로 전환
-        if "혀" in ai_response and current_stage in ["symptom_explore", "sleep_check", "digestion_check"]:
+        if "conversation_count" not in st.session_state:
+            st.session_state.conversation_count = 0
+        st.session_state.conversation_count += 1
+        
+        # 1단계
+        if st.session_state.conversation_count == 1:
+            response_msg = """
+원장님, 환자가 피로를 호소하고 있습니다.
+
+<b>질문 1단계: 시간대 특정</b>
+
+"언제 제일 힘드세요? 아침에 눈뜰 때인가요, 아니면 오후 3시쯤인가요?"
+"""
+            conv_manager.add_message("ai", response_msg)
+            conv_manager.update_stage("sleep_check")
+            st.rerun()
+        
+        # 2단계
+        elif st.session_state.conversation_count == 2:
+            response_msg = """
+역시 그렇군요. 아침부터 피곤하다는 건 단순 과로가 아닙니다.
+
+<b>질문 2단계: 소화기능 확인</b>
+
+"주무시고 나서도 힘드시다면, 몸의 에너지 충전 기능 자체에 문제가 있습니다.
+혹시 식사 후에 유독 졸리거나 속이 더부룩하진 않으신가요?"
+"""
+            conv_manager.add_message("ai", response_msg)
+            conv_manager.update_stage("digestion_check")
+            st.rerun()
+        
+        # 3단계
+        elif st.session_state.conversation_count == 3:
+            response_msg = """
+<b>분석 완료</b>
+
+환자분의 증상을 정리하면:
+- ✓ 아침 기상 시 피로 (수면 회복력 저하)
+- ✓ 식후 졸음/더부룩함 (비위 기능 저하)
+
+이는 <b>비기허(脾氣虛) + 습담(濕痰) 정체</b>의 전형적 패턴입니다.
+
+<b>마지막 단계: 시각적 증거 확보</b>
+
+이제 혀 상태를 확인하여, 환자가 스스로 "내 몸이 망가졌구나"를 깨닫게 만들겠습니다.
+거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요.
+"""
+            conv_manager.add_message("ai", response_msg)
             conv_manager.update_stage("tongue_select")
-        
-        
+            st.rerun()
+
+elif current_stage == "tongue_select":
+    # 혀 선택 단계에서는 입력창 대신 안내 메시지
+    st.markdown(
+        "<div class='tongue-guide'>"
+        "<p style='color: #6B7280; font-size: 15px; margin: 0;'>"
+        "👆 위의 혀 사진 중 하나를 선택해주세요"
+        "</p></div>",
+        unsafe_allow_html=True
+    )
 
 # ============================================
-# 8. 완료 후 액션
+# 9. 완료 후 액션
 # ============================================
 if conv_manager.get_context()["stage"] == "complete":
     col1, col2 = st.columns(2)
@@ -924,7 +749,7 @@ if conv_manager.get_context()["stage"] == "complete":
             st.session_state.mode = "simulation"
             st.session_state.conversation_count = 0
             st.session_state.app_initialized = False
-            
+            st.rerun()
 
     with col2:
         if st.button("상담 내역 보기", use_container_width=True):
@@ -932,7 +757,7 @@ if conv_manager.get_context()["stage"] == "complete":
                 st.markdown(conv_manager.get_summary())
 
 # ============================================
-# 9. 푸터
+# 10. 푸터
 # ============================================
 st.markdown(
     """
