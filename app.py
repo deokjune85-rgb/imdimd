@@ -321,11 +321,18 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
     # 1x4 가로 배열로 혀 사진 표시
     cols = st.columns(4)
     
+    from PIL import Image
+    import os
+    
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            # 혀 사진 표시 - 간단한 경로
+            # 혀 사진 표시 - PIL로 열어서 표시
+            image_path = tongue_data['image']
+            
             try:
-                st.image(tongue_data['image'], use_container_width=True)
+                # PIL로 이미지 열기
+                img = Image.open(image_path)
+                st.image(img, use_container_width=True)
             except Exception as e:
                 # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
