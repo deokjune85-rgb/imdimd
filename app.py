@@ -108,40 +108,6 @@ footer {{
     margin-top: 4px;
 }}
 
-/* 채팅 메시지 스타일 강제 */
-[data-testid="stChatMessage"] {{
-    background: white !important;
-    padding: 16px !important;
-    border-radius: 12px !important;
-    margin: 8px 0 !important;
-}}
-
-/* 이모지 아바타 제거 */
-[data-testid="stChatMessageAvatarAssistant"],
-[data-testid="stChatMessageAvatarUser"] {{
-    display: none !important;
-}}
-
-/* 글자 색상 검정 */
-[data-testid="stChatMessage"] p {{
-    color: #1F2937 !important;
-    font-size: 18px !important;
-    line-height: 1.6 !important;
-}}
-
-/* AI 메시지 배경 */
-[data-testid="stChatMessageAssistant"] {{
-    background: #F9FAFB !important;
-    border: 1px solid #E5E7EB !important;
-}}
-
-/* User 메시지 배경 */
-[data-testid="stChatMessageUser"] {{
-    background: #E5E7EB !important;
-    margin-left: auto !important;
-    max-width: 80% !important;
-}}
-
 /* 채팅 영역 */
 .chat-area {{
     padding: 12px 20px 4px 20px;
@@ -482,15 +448,23 @@ st.markdown(
 )
 
 # ============================================
-# 5. 채팅 히스토리 출력 (Streamlit 네이티브 컴포넌트)
+# 5. 채팅 히스토리 출력 (HTML 방식)
 # ============================================
-for msg in conv_manager.get_history():
+st.markdown('<div class="chat-area">', unsafe_allow_html=True)
+
+for idx, msg in enumerate(conv_manager.get_history()):
     if msg["role"] == "ai":
-        with st.chat_message("assistant"):
-            st.markdown(msg["text"], unsafe_allow_html=True)
+        st.markdown(f'<div class="ai-msg">{msg["text"]}</div>', unsafe_allow_html=True)
     elif msg["role"] == "user":
-        with st.chat_message("user"):
-            st.markdown(msg["text"])
+        st.markdown(
+            f'<div class="msg-right">'
+            f'<div class="patient-card">'
+            f'<div class="patient-text">{msg["text"]}</div>'
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ============================================
@@ -931,9 +905,9 @@ if user_input:
         conv_manager.update_stage("tongue_select")
         manual_response_given = True
     
-    # 수동 응답이 있으면 API 호출 건너뛰기 (rerun 제거)
+    # 수동 응답이 있으면 여기서 종료
     if manual_response_given:
-        pass  # 메시지만 추가, rerun 하지 않음
+        pass  # 메시지만 추가, 다른 처리 없음
     
     # solution 단계에서 "네" 또는 긍정 답변 시 자동 클로징
     elif context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
