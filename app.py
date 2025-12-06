@@ -56,309 +56,325 @@ st.set_page_config(
 )
 
 # ============================================
-# 2. CSS (모바일 최적화 - 인터리브 코멘터리 방식)
+# 2. CSS (화이트 모드 - 제미나이 스타일 + 폰트 2pt 증가)
 # ============================================
 st.markdown(
-    """
+    f"""
 <style>
-/* 전체 다크 테마 */
-.stApp { 
-    background-color: #121212; 
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; 
-    color: white; 
-}
+/* 전체 흰색 배경 */
+.stApp {{
+    background: white !important;
+}}
 
-.main {
-    background-color: #121212 !important;
-}
+.main {{
+    background: white !important;
+}}
 
-.main .block-container {
+.main .block-container {{
     padding: 0 !important;
     max-width: 720px !important;
     margin: 0 auto !important;
-    background-color: #121212 !important;
-}
+    background: white !important;
+}}
 
-header, .stDeployButton {
+header, .stDeployButton {{
     display: none !important;
-}
+}}
 
-footer {
+footer {{
     display: none !important;
-}
+}}
 
 /* 타이틀 */
-.title-box {
+.title-box {{
     text-align: center;
     padding: 20px 20px 12px 20px;
-    background-color: #121212;
-}
+    background: white;
+}}
 
-.title-box h1 {
+.title-box h1 {{
     font-family: Arial, sans-serif !important;
-    font-size: 24px !important;
+    font-size: 30px !important;  /* 28px → 30px */
     font-weight: 700 !important;
-    color: #D4AF37 !important;
+    color: {COLOR_PRIMARY} !important;
     margin: 0 !important;
     letter-spacing: 0.5px !important;
-}
+    white-space: nowrap !important;
+}}
 
-.title-box .sub {
-    font-size: 12px;
-    color: #888;
+.title-box .sub {{
+    font-size: 14px !important;  /* 12px → 14px */
+    color: #4B5563;
     margin-top: 4px;
-}
+}}
 
 /* 채팅 영역 */
-.chat-area {
+.chat-area {{
     padding: 12px 20px 4px 20px;
-    background-color: #121212 !important;
+    background: white !important;
     min-height: 150px;
     margin-bottom: 100px;
-}
+}}
 
-/* 1. 환자용 UI (밝은 카드 스타일 - 환자 메시지) */
-.patient-card {
-    background-color: #ffffff;
-    color: #333;
-    padding: 16px 20px;
-    border-radius: 15px;
-    margin: 10px 0;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    border-left: 6px solid #2E8B57;
-    max-width: 85%;
-    display: inline-block;
-}
+/* AI 메시지 버블 */
+.ai-msg {{
+    background: white !important;
+    color: #111827 !important;
+    padding: 16px 20px !important;
+    border-radius: 18px 18px 18px 4px !important;
+    margin: 18px 0 10px 0 !important;
+    max-width: 85% !important;
+    display: block !important;
+    font-size: 20px !important;  /* 18px → 20px */
+    line-height: 1.6 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
+    border: none !important;
+    outline: none !important;
+    clear: both !important;
+    animation: fadeInText 0.55s ease-out;
+}}
 
-.patient-text {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111;
-    line-height: 1.5;
-}
+.ai-msg::before, .ai-msg::after {{
+    content: none !important;
+    display: none !important;
+}}
 
-/* 사용자 메시지 우측 정렬 */
-.msg-right {
+/* AI 텍스트 (검은색 유지) */
+.ai-text {{
+    color: #111827 !important;
+}}
+
+/* 부드러운 그라데이션 느낌의 등장 애니메이션 */
+@keyframes fadeInText {{
+    0% {{
+        opacity: 0;
+        transform: translateY(10px);
+        filter: blur(3px);
+    }}
+    50% {{
+        opacity: 0.7;
+        transform: translateY(3px);
+        filter: blur(1.5px);
+    }}
+    100% {{
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }}
+}}
+
+/* 사용자 메시지 (흰색 카드) */
+.patient-card {{
+    background: {COLOR_USER_BUBBLE} !important;
+    color: #111827 !important;
+    padding: 14px 20px !important;  /* 12px → 14px */
+    border-radius: 18px 18px 4px 18px !important;
+    margin: 8px 0 !important;
+    max-width: 70% !important;
+    display: inline-block !important;
+    font-size: 18px !important;  /* 16px → 18px */
+    line-height: 1.4 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
+}}
+
+.patient-text {{
+    color: #111827 !important;
+}}
+
+.msg-right {{
     text-align: right !important;
     clear: both !important;
     display: block !important;
     width: 100% !important;
     margin-top: 16px !important;
-}
+}}
 
-/* 2. AI 원장님용 로그 (어두운 터미널 스타일) */
-.admin-log {
-    background-color: #000;
-    color: #00E5FF;
-    padding: 15px 18px;
-    border-radius: 10px;
-    margin: 5px 0 25px 0;
+/* AI 분석 로그 (연한 회색 배경) */
+.admin-log {{
+    background: #F9FAFB !important;
+    color: #1F2937 !important;
+    padding: 16px 20px !important;
+    border-radius: 12px !important;
+    margin: 8px 0 20px 0 !important;
+    max-width: 90% !important;
     font-family: 'Courier New', monospace;
-    font-size: 13px;
-    line-height: 1.6;
-    border: 1px solid #333;
+    font-size: 15px !important;  /* 13px → 15px */
+    line-height: 1.6 !important;
+    border: 1px solid #E5E7EB !important;
     animation: fadeIn 0.5s ease-in-out;
-    max-width: 90%;
-}
+}}
 
-.log-header {
-    color: #D4AF37;
+.log-header {{
+    color: #059669 !important;  /* 초록색 */
     font-weight: bold;
-    font-size: 11px;
+    font-size: 13px !important;  /* 11px → 13px */
     margin-bottom: 8px;
     display: block;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #E5E7EB;
     padding-bottom: 5px;
     letter-spacing: 1px;
-}
+}}
 
-.log-highlight {
-    color: #ffff00;
+.log-highlight {{
+    color: #DC2626 !important;  /* 빨간색 */
     font-weight: bold;
     text-decoration: underline;
-}
+}}
 
-.log-msg {
-    color: #00E5FF;
-    line-height: 1.5;
-}
+.log-msg {{
+    color: #1F2937 !important;
+    line-height: 1.6;
+}}
 
-/* AI 메시지 (일반 대화용 - 기존 스타일 유지) */
-.ai-msg {
-    background-color: #1a1a1a !important;
-    color: #E0E0E0 !important;
-    padding: 16px 20px !important;
-    border-radius: 15px !important;
-    margin: 18px 0 10px 0 !important;
-    max-width: 85% !important;
-    display: block !important;
-    font-size: 16px !important;
-    line-height: 1.6 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-    border-left: 3px solid #D4AF37 !important;
-    animation: fadeInText 0.55s ease-out;
-}
-
-/* 부드러운 등장 애니메이션 */
-@keyframes fadeInText {
-    0% {
-        opacity: 0;
-        transform: translateY(10px);
-        filter: blur(3px);
-    }
-    50% {
-        opacity: 0.7;
-        transform: translateY(3px);
-        filter: blur(1.5px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-        filter: blur(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
+@keyframes fadeIn {{
+    from {{
         opacity: 0;
         transform: translateY(-10px);
-    }
-    to {
+    }}
+    to {{
         opacity: 1;
         transform: translateY(0);
-    }
-}
+    }}
+}}
 
 /* 입력창 */
-.stChatInput {
+.stChatInput {{
     position: fixed !important;
     bottom: 60px !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    background-color: #1a1a1a !important;
+    background: white !important;
     padding: 10px 0 !important;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.08) !important;
     z-index: 999 !important;
     margin: 0 !important;
-}
+}}
 
-.stChatInput > div {
+.stChatInput > div {{
     max-width: 680px !important;
     margin: 0 auto !important;
-    border: 1px solid #333 !important;
+    border: 1px solid #E5E7EB !important;
     border-radius: 24px !important;
-    background-color: #2a2a2a !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
-}
+    background: white !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}}
 
-.stChatInput input {
-    color: #E0E0E0 !important;
-    background-color: #2a2a2a !important;
-    -webkit-text-fill-color: #E0E0E0 !important;
-}
+.stChatInput input {{
+    color: #1F2937 !important;
+    background: white !important;
+    font-size: 17px !important;  /* 15px → 17px */
+    -webkit-text-fill-color: #1F2937 !important;
+}}
 
-.stChatInput input::placeholder {
-    color: #666 !important;
-    font-size: 15px !important;
+.stChatInput input::placeholder {{
+    color: #D1D5DB !important;
+    font-size: 17px !important;  /* 15px → 17px */
     opacity: 1 !important;
-    -webkit-text-fill-color: #666 !important;
-}
+    -webkit-text-fill-color: #D1D5DB !important;
+}}
 
 /* 푸터 */
-.footer {
+.footer {{
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     width: 100%;
-    background-color: #1a1a1a !important;
+    background: white !important;
     padding: 12px 20px;
     text-align: center;
-    font-size: 11px;
-    color: #666;
-    border-top: 1px solid #333;
+    font-size: 13px !important;  /* 11px → 13px */
+    color: #9CA3AF;
+    border-top: 1px solid {COLOR_BORDER};
     z-index: 998;
-}
+}}
 
-.footer b {
-    color: #D4AF37;
+.footer b {{
+    color: {COLOR_TEXT};
     font-weight: 600;
-}
+}}
 
 /* 폼 */
-.stForm {
-    background-color: #1a1a1a;
+.stForm {{
+    background: white;
     padding: 20px;
-    border: 1px solid #333;
+    border: 1px solid {COLOR_BORDER};
     border-radius: 12px;
     margin: 16px 20px 180px 20px;
-}
+}}
 
-.stForm label {
-    color: #E0E0E0 !important;
+.stForm label {{
+    color: #1F2937 !important;
     font-weight: 500 !important;
-    font-size: 14px !important;
-}
+    font-size: 16px !important;  /* 14px → 16px */
+}}
 
-input, textarea, select {
-    border: 1px solid #333 !important;
+input, textarea, select {{
+    border: 1px solid {COLOR_BORDER} !important;
     border-radius: 8px !important;
-    background-color: #2a2a2a !important;
-    color: #E0E0E0 !important;
-}
+    background: white !important;
+    color: #1F2937 !important;
+    font-size: 16px !important;  /* +2px */
+}}
 
-input::placeholder, textarea::placeholder {
-    color: #666 !important;
+input::placeholder, textarea::placeholder {{
+    color: #D1D5DB !important;
     opacity: 1 !important;
-}
+}}
 
 /* 버튼 */
-.stButton > button {
+.stButton > button {{
     width: 100%;
-    background-color: #2a2a2a;
-    border: 2px solid #D4AF37;
-    color: #D4AF37;
+    background: white;
+    border: 2px solid {COLOR_PRIMARY};
+    color: {COLOR_PRIMARY};
     font-weight: 600;
+    font-size: 16px !important;  /* +2px */
     padding: 12px 24px;
     border-radius: 12px;
     transition: all 0.3s ease;
-}
+}}
 
-.stButton > button:hover {
-    background-color: #D4AF37;
-    color: #121212;
-}
+.stButton > button:hover {{
+    background: {COLOR_PRIMARY};
+    color: white;
+}}
 
 /* 모바일 */
-@media (max-width: 768px) {
-    .main .block-container {
+@media (max-width: 768px) {{
+    .main .block-container {{
         padding-top: 0 !important;
-    }
+    }}
     
-    .title-box {
-        padding: 16px 16px 12px 16px !important;
-    }
+    .title-box {{
+        padding: 2px 16px 2px 16px !important;
+    }}
     
-    .title-box h1 {
-        font-size: 20px !important;
-        line-height: 1.2 !important;
-    }
+    .title-box h1 {{
+        font-size: 24px !important;  /* 22px → 24px */
+        line-height: 1.1 !important;
+    }}
     
-    .chat-area {
-        padding: 8px 16px 4px 16px !important;
-    }
+    .chat-area {{
+        padding: 2px 16px 4px 16px !important;
+    }}
     
-    .ai-msg, .admin-log {
-        font-size: 14px !important;
-        padding: 14px 16px !important;
-    }
+    .ai-msg {{
+        font-size: 18px !important;  /* 16px → 18px */
+        padding: 14px 18px !important;
+    }}
     
-    .patient-card {
-        font-size: 15px !important;
-        padding: 14px 16px !important;
-    }
-}
+    .patient-card {{
+        font-size: 17px !important;  /* 15px → 17px */
+    }}
+    
+    .admin-log {{
+        font-size: 14px !important;  /* 12px → 14px */
+    }}
+}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -398,11 +414,11 @@ if "app_initialized" not in st.session_state:
 # 4. 헤더
 # ============================================
 st.markdown(
-    """
+    f"""
 <div class="title-box">
-    <h1>💼 IMD MEDICAL CONSULTING</h1>
+    <h1>IMD MEDICAL CONSULTING</h1>
     <div class="sub">원장님의 진료 철학을 학습한 'AI 수석 실장' 데모</div>
-    <div class="sub" style="font-size: 11px; color: #666; margin-top: 4px;">
+    <div class="sub" style="font-size: 13px; color: #6B7280; margin-top: 4px;">
         엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)
     </div>
 </div>
@@ -491,13 +507,13 @@ if (
 ):
     st.markdown("---")
     st.markdown(
-        '<div style="text-align:center; color:#D4AF37; font-weight:600; font-size:18px; margin:20px 0 10px;">'
+        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">'
         "이 시스템을 한의원에 도입하시겠습니까?"
         "</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<p style='text-align:center; color:#888; font-size:14px; margin-bottom:20px;'>"
+        "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>"
         "지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다"
         "</p>",
         unsafe_allow_html=True,
