@@ -2,8 +2,7 @@
 """
 IMD Sales / Medical Bot - Lead Handler
 구글 시트에 리드(문의/견적 요청) 저장하는 모듈
-- config.SHEET_COLUMNS 에 의존하지 않도록 설계
-- 시트가 없거나, 시크릿이 없어도 앱이 죽지 않게 방어 코드 포함
+- 증상, 혀 타입, 건강 점수 저장 지원
 """
 
 from datetime import datetime
@@ -19,12 +18,14 @@ except Exception:
     Credentials = None  # type: ignore
 
 
-# 기본 컬럼 정의 (config에 안 만들어도 여기 것만으로 동작)
+# 기본 컬럼 정의
 DEFAULT_SHEET_COLUMNS: List[str] = [
     "timestamp",
     "name",
     "contact",
     "symptom",
+    "tongue_type",
+    "health_score",
     "preferred_date",
     "chat_summary",
     "source",
@@ -53,8 +54,6 @@ class LeadHandler:
 
         # 시크릿에서 서비스 계정/시트 ID 가져오기
         try:
-            # ⚠️ 여기 키 이름은 네 환경에 맞게 쓰면 됨.
-            # 아래 순서대로 존재하는 키를 사용.
             service_info = (
                 st.secrets.get("GOOGLE_SERVICE_ACCOUNT")
                 or st.secrets.get("gcp_service_account")
@@ -77,7 +76,7 @@ class LeadHandler:
             creds = Credentials.from_service_account_info(service_info, scopes=scopes)
             self.client = gspread.authorize(creds)
 
-            # 기본: 첫 번째 워크시트 사용 (필요하면 이름으로 열도록 수정 가능)
+            # 기본: 첫 번째 워크시트 사용
             sh = self.client.open_by_key(sheet_id)
             self.sheet = sh.sheet1
 
@@ -90,7 +89,6 @@ class LeadHandler:
                 self.columns = existing
 
         except Exception as e:
-            # 여기서 예외가 나도 앱이 죽지 않게만 막는다.
             try:
                 st.error(f"⚠️ 구글 시트 초기화 실패: {e}")
             except Exception:
@@ -104,11 +102,8 @@ class LeadHandler:
     def _build_row(self, data: Dict) -> List[str]:
         """
         입력 딕셔너리를 현재 시트 컬럼 순서에 맞춰 한 줄 리스트로 변환
-        - 없는 건 ''로 채우고
-        - DEFAULT_SHEET_COLUMNS에만 존재하는 키는 시트에 컬럼이 있으면 사용
         """
         row: List[str] = []
-        # 첫 번째 컬럼에 timestamp가 있다고 가정
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         for col in self.columns:
@@ -117,7 +112,7 @@ class LeadHandler:
                 row.append(now_str)
             else:
                 value = data.get(key, "")
-                # dict의 value가 dict/list면 문자열로 캐스팅
+                # dict/list면 문자열로 캐스팅
                 if isinstance(value, (dict, list)):
                     value = str(value)
                 row.append(str(value) if value is not None else "")
@@ -134,11 +129,13 @@ class LeadHandler:
             data: {
                 'name': ...,
                 'contact': ...,
-                'symptom': ...,
+                'symptom': ...,  # 선택한 증상
+                'tongue_type': ...,  # 선택한 혀 타입
+                'health_score': ...,  # 건강 점수
                 'preferred_date': ...,
                 'chat_summary': ...,
                 'source': ...,
-                'type': ... (옵션)
+                'type': ...
             }
 
         Returns:
@@ -146,8 +143,7 @@ class LeadHandler:
         """
         # 시트 미연결 상태
         if self.sheet is None:
-            # 개발 / 데모 환경에서는 그냥 성공으로 처리해도 되고,
-            # 필요하면 False로 돌려도 된다. 여기선 True + 안내 메시지로 처리.
+            # 개발 / 데모 환경에서는 그냥 성공으로 처리
             return True, "구글 시트 미연결 상태 (데모 모드로 처리했습니다)."
 
         try:
