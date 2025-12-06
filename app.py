@@ -328,6 +328,12 @@ conv_manager = get_conversation_manager()
 prompt_engine = get_prompt_engine()
 lead_handler = LeadHandler()
 
+# stage 초기값 강제 세팅
+ctx = conv_manager.get_context()
+if not ctx.get("stage"):
+    conv_manager.update_stage("initial")
+
+
 # B2B 모드 시작 메시지
 if 'app_initialized' not in st.session_state:
     initial_msg = """안녕하십니까, 원장님.
