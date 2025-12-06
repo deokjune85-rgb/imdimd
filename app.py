@@ -448,6 +448,114 @@ st.markdown(
 )
 
 # ============================================
+# 4.5 사용자 입력 받기 (먼저 처리)
+# ============================================
+user_input = st.chat_input("원장님의 생각을 말씀해주세요")
+
+# 입력이 있으면 즉시 처리
+if user_input:
+    current_stage = conv_manager.get_context().get("stage", "symptom_explore")
+    
+    # 혀 타입 텍스트 자동 인식
+    detected_tongue = None
+    for tongue_key in ['담백설', '치흔설', '황태설', '자색설']:
+        if tongue_key in user_input:
+            detected_tongue = tongue_key
+            break
+    
+    # 혀 선택 처리
+    if detected_tongue and current_stage == "tongue_select":
+        st.session_state.tongue_selected = True
+        conv_manager.update_context("selected_tongue", detected_tongue)
+        conv_manager.add_message("user", f"[선택: {user_input}]")
+        
+        info = TONGUE_TYPES[detected_tongue]
+        analysis_msg = f"""
+<b>보셨습니까 원장님?</b>
+
+방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
+
+{info['analysis']}
+
+제가 한 일:
+1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
+2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
+3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
+
+저는 환자의 말을 그냥 듣지 않습니다.
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
+
+이 시스템을 원장님 병원에 24시간 붙여놓으면,
+밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
+<b>예약 버튼</b>을 누릅니다.
+
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
+
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
+
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
+"""
+        conv_manager.add_message("ai", analysis_msg)
+        conv_manager.update_stage("conversion")
+        st.session_state.mode = "closing"
+    
+    # 일반 메시지 처리
+    else:
+        conv_manager.add_message("user", user_input, metadata={"type": "text"})
+        
+        if "conversation_count" not in st.session_state:
+            st.session_state.conversation_count = 0
+        st.session_state.conversation_count += 1
+        
+        # 1단계
+        if st.session_state.conversation_count == 1:
+            response_msg = """
+원장님, 환자가 피로를 호소하고 있습니다.
+
+<b>질문 1단계: 시간대 특정</b>
+
+"언제 제일 힘드세요? 아침에 눈뜰 때인가요, 아니면 오후 3시쯤인가요?"
+"""
+            conv_manager.add_message("ai", response_msg)
+            conv_manager.update_stage("sleep_check")
+        
+        # 2단계
+        elif st.session_state.conversation_count == 2:
+            response_msg = """
+역시 그렇군요. 아침부터 피곤하다는 건 단순 과로가 아닙니다.
+
+<b>질문 2단계: 소화기능 확인</b>
+
+"주무시고 나서도 힘드시다면, 몸의 에너지 충전 기능 자체에 문제가 있습니다.
+혹시 식사 후에 유독 졸리거나 속이 더부룩하진 않으신가요?"
+"""
+            conv_manager.add_message("ai", response_msg)
+            conv_manager.update_stage("digestion_check")
+        
+        # 3단계
+        elif st.session_state.conversation_count == 3:
+            response_msg = """
+<b>분석 완료</b>
+
+환자분의 증상을 정리하면:
+- ✓ 아침 기상 시 피로 (수면 회복력 저하)
+- ✓ 식후 졸음/더부룩함 (비위 기능 저하)
+
+이는 <b>비기허(脾氣虛) + 습담(濕痰) 정체</b>의 전형적 패턴입니다.
+
+<b>마지막 단계: 시각적 증거 확보</b>
+
+이제 혀 상태를 확인하여, 환자가 스스로 "내 몸이 망가졌구나"를 깨닫게 만들겠습니다.
+거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요.
+"""
+            conv_manager.add_message("ai", response_msg)
+            conv_manager.update_stage("tongue_select")
+
+# ============================================
 # 5. 채팅 히스토리 출력 (HTML 방식)
 # ============================================
 st.markdown('<div class="chat-area">', unsafe_allow_html=True)
@@ -790,206 +898,6 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 
 
 # 일반 텍스트 입력
-user_input = st.chat_input("원장님의 생각을 말씀해주세요")
-
-if user_input:
-    # 혀 타입 텍스트 자동 인식
-    detected_tongue = None
-    for tongue_key in ['담백설', '치흔설', '황태설', '자색설']:
-        if tongue_key in user_input:
-            detected_tongue = tongue_key
-            break
-    
-    # 혀 타입이 감지되고 현재 혀 선택 단계라면
-    if detected_tongue and current_stage == "tongue_select":
-        st.session_state.tongue_selected = True
-        st.session_state.selected_tongue_type = detected_tongue
-        conv_manager.update_context("selected_tongue", detected_tongue)
-        conv_manager.add_message("user", f"[선택: {user_input}]")
-        
-        info = TONGUE_TYPES[detected_tongue]
-        analysis_msg = f"""
-<b>보셨습니까 원장님?</b>
-
-방금 환자가 선택한 <b>{info['name']}</b>을 보십시오.
-
-{info['analysis']}
-
-제가 한 일:
-1. "언제 제일 힘드세요?" → 기상 직후 피로 (기허 의심)
-2. "식사 후 졸리세요?" → 소화기능 저하 확인 (비기허 변증)
-3. 혀 사진 선택 → <b>시각적 증거 확보</b> (환자 스스로 인정)
-
-저는 환자의 말을 그냥 듣지 않습니다.
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-'약을 먹을 수밖에 없는 몸 상태'임을 스스로 인정하게 만듭니다.
-
-이 시스템을 원장님 병원에 24시간 붙여놓으면,
-밤 11시에 검색하는 직장인도 자동으로 "내 몸이 심각하구나"를 깨닫고
-<b>예약 버튼</b>을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- <b>핵심</b>: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-        conv_manager.add_message("ai", analysis_msg)
-        conv_manager.update_stage("conversion")
-        st.session_state.mode = "closing"
-        
-        
-    
-    # 일반 메시지 처리
-    conv_manager.add_message("user", user_input, metadata={"type": "text"})
-
-    # 대화 카운트
-    if "conversation_count" not in st.session_state:
-        st.session_state.conversation_count = 0
-    st.session_state.conversation_count += 1
-
-    context = conv_manager.get_context()
-    history = conv_manager.get_formatted_history(for_llm=True)
-    
-    # ===== 수동 응답: 단계별 분석 =====
-    
-    manual_response_given = False  # 수동 응답 플래그
-    
-    # 1단계: 첫 증상 입력 → 수면 질문
-    if st.session_state.conversation_count == 1:
-        response_msg = """
-원장님, 환자가 피로를 호소하고 있습니다.
-
-<b>질문 1단계: 시간대 특정</b>
-
-"언제 제일 힘드세요? 아침에 눈뜰 때인가요, 아니면 오후 3시쯤인가요?"
-"""
-        conv_manager.add_message("ai", response_msg)
-        conv_manager.update_stage("sleep_check")
-        manual_response_given = True
-    
-    # 2단계: 수면 답변 → 소화 질문
-    elif st.session_state.conversation_count == 2:
-        response_msg = """
-역시 그렇군요. 아침부터 피곤하다는 건 단순 과로가 아닙니다.
-
-<b>질문 2단계: 소화기능 확인</b>
-
-"주무시고 나서도 힘드시다면, 몸의 에너지 충전 기능 자체에 문제가 있습니다.
-혹시 식사 후에 유독 졸리거나 속이 더부룩하진 않으신가요?"
-"""
-        conv_manager.add_message("ai", response_msg)
-        conv_manager.update_stage("digestion_check")
-        manual_response_given = True
-    
-    # 3단계: 소화 답변 → 혀 선택
-    elif st.session_state.conversation_count == 3:
-        response_msg = """
-<b>분석 완료</b>
-
-환자분의 증상을 정리하면:
-- ✓ 아침 기상 시 피로 (수면 회복력 저하)
-- ✓ 식후 졸음/더부룩함 (비위 기능 저하)
-
-이는 <b>비기허(脾氣虛) + 습담(濕痰) 정체</b>의 전형적 패턴입니다.
-
-<b>마지막 단계: 시각적 증거 확보</b>
-
-이제 혀 상태를 확인하여, 환자가 스스로 "내 몸이 망가졌구나"를 깨닫게 만들겠습니다.
-거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요.
-"""
-        conv_manager.add_message("ai", response_msg)
-        conv_manager.update_stage("tongue_select")
-        manual_response_given = True
-    
-    # 수동 응답이 있으면 여기서 종료
-    if manual_response_given:
-        pass  # 메시지만 추가, 다른 처리 없음
-    
-    # solution 단계에서 "네" 또는 긍정 답변 시 자동 클로징
-    elif context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
-        st.session_state.mode = "closing"
-        closing_msg = """
-<b>보셨습니까 원장님?</b>
-
-저는 환자의 말을 그냥 듣지 않습니다.
-
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-**'약을 먹을 수밖에 없는 몸 상태'**임을 스스로 인정하게 만듭니다.
-
-방금 체험하신 흐름:
-
-1️⃣ <b>증상 구체화</b>: "언제 제일 힘드세요?" (단순 피로 배제)
-2️⃣ <b>원인 추적</b>: 수면 → 소화 연결 (비기허 변증)
-3️⃣ <b>시각적 증거</b>: 혀 사진으로 확증 (치흔설/황태설 등)
-4️⃣ <b>위기감 조성</b>: "쉬어서 낫는 단계 지났습니다"
-5️⃣ <b>솔루션 제안</b>: 녹용/공진단 필수성 각인
-
-이 과정을 병원 홈페이지에 24시간 붙여놓으면,
-
-밤 11시에 검색하는 직장인도
-아침 8시에 문의하는 주부도
-자동으로 "내 몸이 심각하구나"를 깨닫고 예약 버튼을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- **핵심**: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-여기서 딱 한 가지 질문만 남습니다.
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-        conv_manager.add_message("ai", closing_msg)
-        conv_manager.update_stage("conversion")
-        
-
-    # 3회 이상 대화되면 클로징 멘트 직접 투입 (기존 로직 유지)
-    elif st.session_state.conversation_count >= 3 and st.session_state.mode == "simulation":
-        st.session_state.mode = "closing"
-        closing_msg = """
-<b>보셨습니까 원장님?</b>
-
-저는 환자의 말을 그냥 듣지 않습니다.
-
-<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
-**'약을 먹을 수밖에 없는 몸 상태'**임을 스스로 인정하게 만듭니다.
-
-방금 체험하신 흐름:
-
-1️⃣ <b>증상 구체화</b>: "언제 제일 힘드세요?" (단순 피로 배제)
-2️⃣ <b>원인 추적</b>: 수면 → 소화 연결 (비기허 변증)
-3️⃣ <b>시각적 증거</b>: 혀 사진으로 확증 (치흔설)
-4️⃣ <b>위기감 조성</b>: "쉬어서 낫는 단계 지났습니다"
-5️⃣ <b>솔루션 제안</b>: 녹용/공진단 필수성 각인
-
-이 과정을 병원 홈페이지에 24시간 붙여놓으면,
-
-밤 11시에 검색하는 직장인도
-아침 8시에 문의하는 주부도
-자동으로 "내 몸이 심각하구나"를 깨닫고 예약 버튼을 누릅니다.
-
-실제 적용 사례:
-- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
-- **핵심**: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
-
-여기서 딱 한 가지 질문만 남습니다.
-
-<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
-
-이 아래에 병원명, 성함, 연락처만 남겨주시면,
-24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
-"""
-        conv_manager.add_message("ai", closing_msg)
-        conv_manager.update_stage("conversion")
-        
-
-    else:
         # 로딩 연출 (1초 대기)
         with st.spinner("🔬 환자 데이터 분석 중..."):
             time.sleep(1)  # 1초 로딩
