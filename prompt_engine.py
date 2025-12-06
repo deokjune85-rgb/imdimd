@@ -47,7 +47,7 @@ def _load_api_key() -> str:
 # ----------------------------------------
 # 모델 설정
 # ----------------------------------------
-MODEL_NAME = "gemini-1.5-flash-latest"
+MODEL_NAME = "gemini-2.0-flash"
 
 _api_key = _load_api_key()
 _model = None
