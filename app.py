@@ -498,34 +498,60 @@ if user_input:
     current_stage = context.get('stage', 'initial')
     history = conv_manager.get_formatted_history(for_llm=True)
     
-    # 단계 자동 전환 로직
-    user_lower = user_input.lower()
-    
-    # initial -> symptom_explore
+    # 단계별 강제 응답 (AI 무시하고 직접 제어)
     if current_stage == 'initial':
+        # 첫 증상 → 시간대 질문
+        ai_response = """피곤하시군요. 많은 분들이 비슷한 증상을 호소하십니다.
+
+좀 더 정확히 파악하기 위해 여쭤보겠습니다.
+
+**언제 가장 힘드신가요?**
+- 아침에 눈뜰 때?
+- 오후 시간대?
+- 하루종일 계속?"""
+        conv_manager.add_message("ai", ai_response)
         conv_manager.update_stage('symptom_explore')
-    
-    # symptom_explore -> sleep_check (시간/언제 관련 답변 시)
+        st.rerun()
+        
     elif current_stage == 'symptom_explore':
-        if any(word in user_lower for word in ['아침', '저녁', '오후', '항상', '하루종일', '언제나']):
-            conv_manager.update_stage('sleep_check')
-    
-    # sleep_check -> digestion_check (수면 관련 답변 시)
+        # 시간대 답변 → 수면 질문
+        ai_response = """그렇군요. 그 시간대에 특히 힘드시다는 건, 단순 과로가 아닐 수 있습니다.
+
+**수면은 어떠신가요?**
+- 잠은 몇 시간 정도 주무세요?
+- 자고 일어나도 개운하지 않으신가요?"""
+        conv_manager.add_message("ai", ai_response)
+        conv_manager.update_stage('sleep_check')
+        st.rerun()
+        
     elif current_stage == 'sleep_check':
-        if any(word in user_lower for word in ['잠', '자', '못', '개운', '피곤', '졸려', '수면']):
-            conv_manager.update_stage('digestion_check')
-    
-    # AI 응답 생성
-    time.sleep(1.0)
-    context = conv_manager.get_context()  # 업데이트된 stage 가져오기
-    ai_response = generate_ai_response(user_input, context, history)
-    conv_manager.add_message("ai", ai_response)
-    
-    # AI 응답에 "혀" 키워드가 있으면 digestion_check 단계로 전환
-    if "혀" in ai_response or "설진" in ai_response:
+        # 수면 답변 → 소화 질문
+        ai_response = """잠을 자도 피로가 안 풀리신다면, 에너지 충전 기능 자체에 문제가 있는 것 같습니다.
+
+**소화는 어떠세요?**
+- 식사 후에 더 피곤해지시나요?
+- 속이 더부룩하거나 소화가 안 되시나요?"""
+        conv_manager.add_message("ai", ai_response)
         conv_manager.update_stage('digestion_check')
-    
-    st.rerun()
+        st.rerun()
+        
+    elif current_stage == 'digestion_check':
+        # 소화 답변 → 혀 선택 안내
+        ai_response = """소화와 피로가 함께 오시는군요. 이는 **비위(소화기) 기능 저하**로 인해 기혈 생성이 안 되는 상태일 가능성이 높습니다.
+
+이제 정확한 진단을 위해 **혀 상태**를 확인해보겠습니다.
+
+거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요."""
+        conv_manager.add_message("ai", ai_response)
+        # stage는 그대로 유지 (혀 선택 UI가 나와야 함)
+        st.rerun()
+        
+    else:
+        # 기타 단계에서는 AI 응답
+        time.sleep(1.0)
+        ai_response = generate_ai_response(user_input, context, history)
+        conv_manager.add_message("ai", ai_response)
+        st.rerun()
 
 # ============================================
 # 완료 후
