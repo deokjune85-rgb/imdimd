@@ -1,687 +1,312 @@
 """
-IMD Strategic Consulting - AI Sales Bot (B2B)
-한의원 원장님 대상 AI 실장 시스템 판매
+prompt_engine.py
+한의원 AI 실장 데모용 프롬프트 엔진 + 디버그
+
+역할:
+- app.py에서 넘겨준 context['stage']에 따라
+  어떤 톤/내용으로 말할지 LLM에게 지시한다.
+- 단계 진행은 여기서 "한 단계씩"만 진행한다.
+  initial → symptom_explore → sleep_check → digestion_check → tongue_select → conversion → complete
+
+중요 규칙:
+- tongue_select 이전에는 "혀", "설진", "혀 사진", "혀 상태" 같은 말 절대 금지.
 """
 
+from typing import Any, Dict, List
+import os
 import streamlit as st
-import time
-from conversation_manager import get_conversation_manager
-from prompt_engine import get_prompt_engine, generate_ai_response
-from lead_handler import LeadHandler
-from config import (
-    COLOR_PRIMARY,
-    COLOR_BG,
-    COLOR_TEXT,
-    COLOR_AI_BUBBLE,
-    COLOR_USER_BUBBLE,
-    COLOR_BORDER,
-    TONGUE_TYPES,
-)
 
-# ============================================
-# 페이지 설정
-# ============================================
-st.set_page_config(
-    page_title="IMD Strategic Consulting",
-    page_icon="💼",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
+# -----------------------------
+# google-generativeai 로딩
+# -----------------------------
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
-# ============================================
-# CSS
-# ============================================
-st.markdown(
-    f"""
-<style>
-/* 전체 흰색 배경 */
-.stApp {{
-    background: white !important;
-}}
+# -----------------------------
+# API 키 로딩
+# -----------------------------
+_api_key_source = "none"
+_init_error: str = ""
 
-.main {{
-    background: white !important;
-}}
 
-.main .block-container {{
-    padding: 0 !important;
-    max-width: 720px !important;
-    margin: 0 auto !important;
-    background: white !important;
-}}
+def _load_api_key() -> str:
+    global _api_key_source
 
-header, .stDeployButton {{
-    display: none !important;
-}}
+    # 1) Streamlit secrets
+    try:
+        key = st.secrets["GOOGLE_API_KEY"]
+        if key:
+            _api_key_source = "st.secrets['GOOGLE_API_KEY']"
+            return key
+    except Exception:
+        pass
 
-footer {{
-    display: none !important;
-}}
+    # 2) 환경 변수
+    key = os.getenv("GOOGLE_API_KEY")
+    if key:
+        _api_key_source = "os.environ['GOOGLE_API_KEY']"
+        return key
 
-/* 타이틀 */
-.title-box {{
-    text-align: center;
-    padding: 20px 20px 12px 20px;
-    background: white;
-}}
+    _api_key_source = "none"
+    return ""
 
-.title-box h1 {{
-    font-family: Arial, sans-serif !important;
-    font-size: 30px !important;
-    font-weight: 700 !important;
-    color: {COLOR_PRIMARY} !important;
-    margin: 0 !important;
-    letter-spacing: 0.5px !important;
-    white-space: nowrap !important;
-}}
 
-.title-box .sub {{
-    font-size: 16px;
-    color: #4B5563;
-    margin-top: 4px;
-}}
+# -----------------------------
+# 모델 설정
+# -----------------------------
+MODEL_NAME = "gemini-2.0-flash"  # ✅ 네가 쓰는 모델 이름
 
-/* 채팅 영역 */
-.chat-area {{
-    padding: 12px 20px 4px 20px;
-    background: white !important;
-    min-height: 150px;
-    margin-bottom: 100px;
-}}
+_api_key = _load_api_key()
+_model = None
 
-.ai-msg {{
-    background: white !important;
-    color: #1F2937 !important;
-    padding: 14px 18px !important;
-    border-radius: 18px 18px 18px 4px !important;
-    margin: 16px 0 8px 0 !important;
-    max-width: 85% !important;
-    display: block !important;
-    font-size: 20px !important;
-    line-height: 1.5 !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-    border: none !important;
-    outline: none !important;
-    clear: both !important;
-}}
+if genai is not None and _api_key:
+    try:
+        genai.configure(api_key=_api_key)
+        _model = genai.GenerativeModel(MODEL_NAME)
+    except Exception as e:
+        # 여기서 에러 나면 _model은 None이 되고, 아래에서 에러 내용을 그대로 보여준다
+        _model = None
+        _init_error = f"{type(e).__name__}: {str(e)}"
+elif genai is None:
+    _init_error = "ImportError: google-generativeai 미설치 또는 로딩 실패"
+elif not _api_key:
+    _init_error = "API 키 없음: GOOGLE_API_KEY를 st.secrets 또는 환경변수에서 찾지 못함"
 
-.ai-msg::before, .ai-msg::after {{
-    content: none !important;
-    display: none !important;
-}}
 
-.user-msg {{
-    background: {COLOR_USER_BUBBLE} !important;
-    color: #1F2937 !important;
-    padding: 12px 18px !important;
-    border-radius: 18px 18px 4px 18px !important;
-    margin: 8px 0 !important;
-    max-width: 70% !important;
-    display: inline-block !important;
-    font-size: 19px !important;
-    line-height: 1.4 !important;
-    border: none !important;
-    outline: none !important;
-}}
+def get_prompt_engine() -> Dict[str, Any]:
+    """app.py에서 형식상 호출하는 함수 (확장 여지용)."""
+    return {
+        "model": _model,
+        "name": MODEL_NAME,
+        "api_key_source": _api_key_source,
+        "init_error": _init_error,
+        "has_genai": genai is not None,
+    }
 
-.msg-right {{
-    text-align: right !important;
-    clear: both !important;
-    display: block !important;
-    width: 100% !important;
-    margin-top: 16px !important;
-}}
 
-/* 입력창 */
-.stChatInput {{
-    position: fixed !important;
-    bottom: 60px !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    background: white !important;
-    padding: 10px 0 !important;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.08) !important;
-    z-index: 999 !important;
-    margin: 0 !important;
-}}
-
-.stChatInput > div {{
-    max-width: 680px !important;
-    margin: 0 auto !important;
-    border: 1px solid #E5E7EB !important;
-    border-radius: 24px !important;
-    background: white !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
-}}
-
-.stChatInput input {{
-    color: #1F2937 !important;
-    background: white !important;
-    -webkit-text-fill-color: #1F2937 !important;
-}}
-
-.stChatInput input::placeholder {{
-    color: #D1D5DB !important;
-    font-size: 15px !important;
-    opacity: 1 !important;
-    -webkit-text-fill-color: #D1D5DB !important;
-}}
-
-/* 푸터 */
-.footer {{
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    background: white !important;
-    padding: 12px 20px;
-    text-align: center;
-    font-size: 11px;
-    color: #9CA3AF;
-    border-top: 1px solid {COLOR_BORDER};
-    z-index: 998;
-}}
-
-.footer b {{
-    color: {COLOR_TEXT};
-    font-weight: 600;
-}}
-
-/* 폼 */
-.stForm {{
-    background: white;
-    padding: 20px;
-    border: 1px solid {COLOR_BORDER};
-    border-radius: 12px;
-    margin: 16px 20px 180px 20px;
-}}
-
-.stForm label {{
-    color: #1F2937 !important;
-    font-weight: 500 !important;
-    font-size: 14px !important;
-}}
-
-input, textarea, select {{
-    border: 1px solid {COLOR_BORDER} !important;
-    border-radius: 8px !important;
-    background: white !important;
-    color: #1F2937 !important;
-}}
-
-input::placeholder, textarea::placeholder {{
-    color: #D1D5DB !important;
-    opacity: 1 !important;
-}}
-
-/* 모바일 */
-@media (max-width: 768px) {{
-    .main .block-container {{
-        padding: 0 !important;
-        max-width: 100% !important;
-    }}
-    
-    .title-box {{
-        padding: 8px 8px 8px 8px !important;
-    }}
-    
-    .title-box h1 {{
-        font-size: 22px !important;
-        line-height: 1.1 !important;
-    }}
-    
-    .chat-area {{
-        padding: 8px 8px 4px 8px !important;
-    }}
-    
-    .ai-msg {{
-        font-size: 16px !important;
-        padding: 10px 12px !important;
-    }}
-    
-    .user-msg {{
-        font-size: 15px !important;
-    }}
-    
-    /* 모바일에서 혀 사진 4개 가로 배열 강제 */
-    div[data-testid="stHorizontalBlock"] {{
-        gap: 4px !important;
-    }}
-    
-    div[data-testid="column"] {{
-        min-width: 0 !important;
-        flex: 0 0 23% !important;
-        max-width: 25% !important;
-        padding: 0 2px !important;
-    }}
-    
-    div[data-testid="column"] > div {{
-        padding: 0 !important;
-    }}
-    
-    div[data-testid="column"] img {{
-        width: 100% !important;
-        height: auto !important;
-        margin-bottom: 2px !important;
-    }}
-    
-    div[data-testid="column"] button {{
-        font-size: 10px !important;
-        padding: 4px 2px !important;
-        margin-top: 2px !important;
-        white-space: nowrap !important;
-    }}
-    
-    div[data-testid="column"] div[style*="text-align:center"] {{
-        font-size: 10px !important;
-        margin: 2px 0 !important;
-    }}
-    
-    /* 입력창 여백 제거 */
-    .stChatInput {{
-        padding: 10px 4px !important;
-    }}
-    
-    .stChatInput > div {{
-        max-width: 100% !important;
-        margin: 0 4px !important;
-    }}
-}}
-
-/* 에러 메시지 숨기기 */
-.stException {{
-    display: none !important;
-}}
-
-div[data-testid="stException"] {{
-    display: none !important;
-}}
-
-.element-container:has(.stException) {{
-    display: none !important;
-}}
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
-# ============================================
-# 초기화
-# ============================================
-conv_manager = get_conversation_manager()
-prompt_engine = get_prompt_engine()
-lead_handler = LeadHandler()
-
-ctx = conv_manager.get_context()
-if not ctx.get("stage"):
-    conv_manager.update_stage("initial")
-
-# ============================================
-# B2B 시작 메시지
-# ============================================
-if "app_initialized" not in st.session_state:
-    initial_msg = """안녕하십니까, 원장님.
-
-저는 24시간 잠들지 않는 AI 상담실장입니다.
-
-진료실에서 이런 말, 자주 들으시죠?
-
-"선생님… 생각보다 비싸네요. 그냥 침만 맞을게요."
-
-그 순간, 진료 동선도 끊기고, 원장님 마음도 같이 꺾이실 겁니다.
-
-저는 그 순간 전에, 환자의 마음을 열고, 지갑을 열 준비를 시키는 역할을 합니다.
-
-백문이 불여일견입니다.
-
-지금부터 원장님은 '만성 피로 환자' 역할을 한 번 해봐 주십시오.
-제가 어떻게 상담하고, 어떻게 설득하는지 보여드리겠습니다.
-
-편한 말투로 말씀해 주세요.
-
-예를 들면:
-- "아 놔, 요즘 진짜 너무 피곤해요"
-- "자고 일어나도 피곤이 안 풀려요"
-- "커피 안 마시면 머리가 안 돌아가요"
-
-아무 말이나 편하게 한번 던져보시면 됩니다."""
-    conv_manager.add_message("ai", initial_msg)
-    st.session_state.app_initialized = True
-    st.session_state.mode = "simulation"
-    st.session_state.conversation_count = 0
-
-# ============================================
-# 헤더
-# ============================================
-st.markdown(
+# -----------------------------
+# 스테이지별 시스템 인스트럭션
+# -----------------------------
+def _build_system_instruction(stage: str) -> str:
     """
-<div class="title-box">
-    <h1>IMD STRATEGIC CONSULTING</h1>
-    <div class="sub">원장님의 진료 철학을 완벽하게 학습한 'AI 수석 실장'을 소개합니다</div>
-    <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)</div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
+    stage에 따라 LLM에게 역할과 금지사항을 명확히 전달한다.
+    - tongue_select 이전에는 혀/사진/설진 언급 절대 금지.
+    """
+    base = """
+당신은 '한의원 AI 수석 실장' 역할을 체험시키는 데모 봇입니다.
+대화 상대는 실제 환자가 아니라 '한의원 원장님'이며, 원장님이 환자 역할을 연기하고 있습니다.
 
-# ============================================
-# 채팅 히스토리
-# ============================================
-with st.container():
-    chat_html = '<div class="chat-area">'
-    for msg in conv_manager.get_history():
-        if msg["role"] == "ai":
-            chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
-        elif msg["role"] == "user":
-            chat_html += (
-                f'<div class="msg-right"><span class="user-msg">'
-                f'{msg["text"]}</span></div>'
-            )
-    chat_html += "</div>"
-    st.markdown(chat_html, unsafe_allow_html=True)
-
-
-# ============================================
-# 노이즈(개소리) 판별 함수
-# → 이런 건 단계 진행에서 제외
-# ============================================
-def is_noise_utterance(text: str) -> bool:
-    if not text:
-        return True
-
-    t = text.strip()
-    if not t:
-        return True
-
-    # 아주 짧은 추임새 류
-    if len(t) <= 2 and t in ["ㅎ", "ㅋㅋ", "ㅎㅎ", "ㅇㅋ", "ok", "굿"]:
-        return True
-
-    # 욕 리스트
-    bad_words = [
-        "씨발",
-        "ㅅㅂ",
-        "개새끼",
-        "개같네",
-        "개좆",
-        "개좃",
-        "좆같",
-        "병신",
-        "개같은",
-        "개좆같은소리",
-        "개좃같은소리",
-    ]
-
-    # 건강/증상 관련 키워드 (있으면 유효 발화로 취급)
-    health_keywords = [
-        "허리",
-        "목",
-        "어깨",
-        "똥구멍",
-        "항문",
-        "배",
-        "속",
-        "두통",
-        "어지럽",
-        "불면",
-        "잠",
-        "피곤",
-        "통증",
-        "소화",
-        "다리",
-        "발",
-        "발톱",
-        "내성발톱",
-        "골반",
-        "무릎",
-        "가슴",
-        "심장",
-        "두근",
-    ]
-
-    has_bad = any(b in t for b in bad_words)
-    has_health = any(h in t for h in health_keywords)
-
-    # 욕만 있고 증상 키워드는 없으면 노이즈
-    if has_bad and not has_health:
-        return True
-
-    # 그 외는 유효 발화
-    return False
-
-
-# ============================================
-# 혀 사진 선택 UI
-#  - stage 안 믿고, 마지막 AI 멘트에 "혀" + "선택/사진/거울" 있으면 표시
-# ============================================
-context = conv_manager.get_context()
-chat_history = conv_manager.get_history()
-
-last_ai_text = (
-    chat_history[-1]["text"]
-    if chat_history and chat_history[-1]["role"] == "ai"
-    else ""
-)
-
-show_tongue_ui = (
-    not context.get("selected_tongue")
-    and chat_history
-    and chat_history[-1]["role"] == "ai"
-    and ("혀" in last_ai_text)
-    and ("선택" in last_ai_text or "사진" in last_ai_text or "거울" in last_ai_text)
-)
-
-if show_tongue_ui:
-    from PIL import Image
-
-    with st.container():
-        st.markdown(
-            f'<div style="text-align:center; color:{COLOR_PRIMARY}; '
-            f'font-weight:600; font-size:20px; margin:4px 0 8px 0;">'
-            "거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>",
-            unsafe_allow_html=True,
-        )
-
-        cols = st.columns(4)
-
-        for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
-            with cols[idx]:
-                image_path = tongue_data["image"]
-                try:
-                    img = Image.open(image_path)
-                    st.image(img, use_container_width=True)
-                except Exception:
-                    st.markdown(
-                        f"<div style='text-align:center; font-size:80px; "
-                        f"padding:20px 0;'>{tongue_data['emoji']}</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                st.markdown(
-                    "<div style='text-align:center; font-size:13px; "
-                    "font-weight:600; margin:4px 0; color:#1F2937;'>"
-                    f"{tongue_data['name']}</div>",
-                    unsafe_allow_html=True,
-                )
-
-                if st.button(
-                    "선택", key=f"tongue_{tongue_key}", use_container_width=True
-                ):
-                    conv_manager.update_context("selected_tongue", tongue_key)
-                    conv_manager.update_stage("conversion")
-
-                    diagnosis_msg = (
-                        f"**{tongue_data['name']}** 선택하셨습니다.\n\n"
-                        f"{tongue_data['analysis']}\n\n"
-                        f"**주요 증상**: {tongue_data['symptoms']}\n\n"
-                        f"⚠️ **경고**: {tongue_data['warning']}\n\n"
-                        "---\n\n"
-                        "원장님, 방금 보신 과정이 실제로 제가 환자에게 자동으로 진행하는 흐름입니다.\n\n"
-                        "**제가 한 일:**\n"
-                        "1. 환자의 증상을 구체적으로 쪼개서 물었습니다.\n"
-                        "2. 수면과 소화 패턴을 함께 보면서 '버티고 있는 몸'인지 확인했습니다.\n"
-                        "3. 혀 상태를 통해 환자 스스로 '내 몸이 생각보다 심각하구나'를 깨닫게 만들었습니다.\n\n"
-                        "이 대화를 원장님 병원 홈페이지에 24시간 붙여두면,\n"
-                        "밤 11시, 검색창에 '만성피로 한의원'을 치는 직장인에게 제가 알아서:\n"
-                        "- 증상을 듣고,\n- 위기감을 조성하고,\n"
-                        "- '이 정도면 한약이 필요합니다' 단계까지 끌어올린 뒤,\n"
-                        "- 예약이나 연락처 남기기까지 유도합니다."
-                    )
-
-                    conv_manager.add_message("ai", diagnosis_msg)
-                    conv_manager.calculate_health_score()
-                    st.rerun()
-
-        st.markdown("<div style='height:150px;'></div>", unsafe_allow_html=True)
-
-
-# ============================================
-# CTA (conversion 단계)
-# ============================================
-current_stage = conv_manager.get_context().get("stage")
-selected_tongue = conv_manager.get_context().get("selected_tongue")
-
-if current_stage == "conversion" and selected_tongue and current_stage != "complete":
-    with st.container():
-        st.markdown("---")
-        st.markdown(
-            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; '
-            f'font-size:18px; margin:20px 0 10px;">'
-            "이 시스템을 한의원에 도입하시겠습니까?</div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            "<p style='text-align:center; color:#6B7280; font-size:14px; "
-            "margin-bottom:20px;'>지역구 독점권은 선착순입니다. "
-            "무료 도입 견적서를 보내드립니다</p>",
-            unsafe_allow_html=True,
-        )
-
-        with st.form("consulting_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                clinic_name = st.text_input("병원명", placeholder="서울한의원")
-            with col2:
-                director_name = st.text_input("원장님 성함", placeholder="홍길동")
-
-            contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
-
-            submitted = st.form_submit_button(
-                "무료 도입 견적서 받기", use_container_width=True
-            )
-
-            if submitted:
-                if not clinic_name or not director_name or not contact:
-                    st.error("필수 정보를 모두 입력해주세요.")
-                else:
-                    lead_data = {
-                        "name": director_name,
-                        "contact": contact,
-                        "symptom": f"병원명: {clinic_name}",
-                        "preferred_date": "즉시 상담 희망",
-                        "chat_summary": conv_manager.get_summary(),
-                        "source": "IMD_Strategic_Consulting",
-                        "type": "Oriental_Clinic",
-                    }
-
-                    success, message = lead_handler.save_lead(lead_data)
-
-                    if success:
-                        completion_msg = f"""
-견적서 발송이 완료되었습니다.
-
-{director_name} 원장님, 감사합니다.
-
-{clinic_name}에 최적화된 AI 실장 시스템 견적서를 
-{contact}로 24시간 내 전송해드리겠습니다.
-
-포함 내용:
-- 맞춤형 시스템 구축 비용
-- 월 운영비 및 유지보수
-- 지역 독점권 계약 조건
-- ROI 예상 시뮬레이션
-
-담당 컨설턴트가 직접 연락드리겠습니다.
+공통 규칙:
+- 항상 존댓말.
+- "원장님"이라고 부르며 예의를 갖춘 말투.
+- 답변은 3~8줄 정도의 한국어 문단으로, 너무 짧지도 길지도 않게.
+- 한 번에 한 단계의 질문만 진행한다. 여러 단계를 한 번에 몰아서 묻지 않는다.
+- 마케팅/설명은 자연스럽게 섞되, 핵심은 "환자 공감 + 다음 질문"이다.
 """
-                        conv_manager.add_message("ai", completion_msg)
-                        conv_manager.update_stage("complete")
 
-                        st.success("견적서 신청이 완료되었습니다!")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(f"오류: {message}")
+    if stage == "initial":
+        specific = """
+[현재 단계: initial]
+
+목표:
+- 원장님이 던진 첫 증상/불편감을 공감해 주고,
+- "어떤 점이 가장 힘든지", "언제 특히 힘든지" 정도를 한 번 더 물어본다.
+
+지금 단계에서는:
+- 혀, 설진, 사진, 이미지는 언급하지 않는다.
+- 소화, 수면, 통증, 생활패턴 등 어떤 방향으로도 확장 가능하지만,
+  지금은 "증상 스케치" 수준에서만 묻는다.
+"""
+    elif stage == "symptom_explore":
+        specific = """
+[현재 단계: symptom_explore]
+
+목표:
+- 증상의 '양상'과 '패턴'을 조금 더 구체화한다.
+  (언제부터, 어느 부위, 어떤 느낌, 무엇을 할 때 악화/완화되는지 등)
+
+지금 단계에서는:
+- 여전히 혀/설진/사진 이야기는 절대 꺼내지 않는다.
+- "증상 이야기를 더 자세히 듣는" 데에 집중한다.
+"""
+    elif stage == "sleep_check":
+        specific = """
+[현재 단계: sleep_check]
+
+목표:
+- 수면의 길이, 질, 패턴을 파악한다.
+  (몇 시간 자는지, 잘 때/깰 때 어떤지, 자도 피로가 풀리는지 등)
+
+지금 단계에서는:
+- 혀/설진/사진 언급 금지.
+- 구체적인 수면 패턴에 대해 2~3개의 질문을 한다.
+"""
+    elif stage == "digestion_check":
+        specific = """
+[현재 단계: digestion_check]
+
+목표:
+- 소화 상태, 배변 패턴, 식후 컨디션 등을 확인한다.
+
+지금 단계에서는:
+- 아직 혀/설진/사진 이야기를 꺼내지 않는다.
+- 소화/배변 관련 질문 2~3개를 던진다.
+- 마지막 한 줄 정도에 "이 다음에는 겉으로 보이는 신호도 함께 볼 예정" 정도만 예고.
+"""
+    elif stage == "tongue_select":
+        specific = """
+[현재 단계: tongue_select]
+
+목표:
+- 이제서야 혀 상태(설진)를 꺼낸다.
+- "거울을 보고 자신의 혀를 확인해보고, 화면의 혀 사진 중 가장 비슷한 것을 고르라"고 안내한다.
+"""
+    elif stage == "conversion":
+        specific = """
+[현재 단계: conversion]
+
+목표:
+- 지금까지의 상담 흐름을 원장님 입장에서 정리해주고,
+- "이런 AI 실장을 붙였을 때" 어떤 효과가 있는지 그림을 그려 준다.
+"""
+    else:
+        specific = """
+[현재 단계: complete 또는 기타]
+
+목표:
+- 이미 상담/데모 흐름이 끝난 단계이므로,
+- 원장님이 원하면 다시 처음부터 체험할 수 있다는 정도의 마무리 멘트.
+"""
+
+    return base + "\n" + specific
 
 
-# ============================================
-# 입력창 + LLM 호출
-#  - 여기서 노이즈면 stage 그대로 유지
-# ============================================
-user_input = st.chat_input("원장님의 생각을 말씀해주세요")
-
-if user_input:
-    # 유저 메시지 저장
-    conv_manager.add_message("user", user_input, metadata={"type": "text"})
-
-    # 카운트
-    if "conversation_count" not in st.session_state:
-        st.session_state.conversation_count = 0
-    st.session_state.conversation_count += 1
-
-    context = conv_manager.get_context()
-    current_stage = context.get("stage", "initial")
-    history_for_llm = conv_manager.get_formatted_history(for_llm=True)
-
-    # LLM 호출
-    raw_output = generate_ai_response(user_input, context, history_for_llm)
-
-    # [[STAGE:...]] 태그 파싱
-    next_stage = current_stage
-    ai_text = raw_output
-
-    if "[[STAGE:" in raw_output:
-        body, tail = raw_output.rsplit("[[STAGE:", 1)
-        ai_text = body.strip()
-        stage_tag = tail.split("]]", 1)[0].strip()
-        if stage_tag:
-            next_stage = stage_tag
-
-    # 🔴 욕/개소리면: 단계 진행 막고, 현재 stage 유지
-    if is_noise_utterance(user_input):
-        next_stage = current_stage
-
-    conv_manager.add_message("ai", ai_text)
-    conv_manager.update_stage(next_stage)
-
-    st.rerun()
-
-# ============================================
-# 완료 후
-# ============================================
-if conv_manager.get_context().get("stage") == "complete":
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("새 상담 시작", use_container_width=True):
-            conv_manager.reset_conversation()
-            st.rerun()
-
-    with col2:
-        if st.button("상담 내역 보기", use_container_width=True):
-            with st.expander("상담 요약", expanded=True):
-                st.markdown(conv_manager.get_summary())
-
-# ============================================
-# 푸터
-# ============================================
-st.markdown(
+# -----------------------------
+# LLM 호출 유틸 (디버그 강화)
+# -----------------------------
+def _call_llm(system_instruction: str, history: List[Dict[str, str]], user_input: str) -> str:
     """
-<div class="footer">
-    <b>IMD Strategic Consulting</b><br>
-    한의원 전용 AI 매출 엔진 | 전국 200개 한의원 도입 완료
-</div>
-""",
-    unsafe_allow_html=True,
-)
+    Gemini 호출.
+    실패 시, 어디에서 막혔는지 원인을 한국어로 직접 알려준다.
+    """
+    # 1) 라이브러리 자체가 없는 경우
+    if genai is None:
+        return (
+            "원장님, 현재 서버에 google-generativeai 라이브러리가 설치되어 있지 않거나 "
+            "임포트에 실패했습니다.\n\n"
+            "- requirements.txt 에 `google-generativeai` 가 포함되어 있는지\n"
+            "- 배포 후 앱이 재시작되었는지\n"
+            "확인해 주셔야 실제 AI 답변이 가능합니다."
+        )
+
+    # 2) API 키를 못 찾은 경우
+    if not _api_key:
+        return (
+            "원장님, GOOGLE_API_KEY 값을 찾지 못했습니다.\n\n"
+            "다음 두 곳 중 하나에 반드시 설정이 필요합니다.\n"
+            "1) .streamlit/secrets.toml 파일에\n"
+            '   GOOGLE_API_KEY = "발급받으신_제미나이_API_키"\n'
+            "2) 또는 서버 환경 변수 GOOGLE_API_KEY 에 동일한 키를 설정\n\n"
+            "설정 후 앱을 다시 시작해 주셔야 합니다."
+        )
+
+    # 3) 키는 있는데, 모델 초기화에서 에러가 난 경우
+    if _model is None:
+        msg = "원장님, Gemini 모델 초기화 과정에서 오류가 발생했습니다.\n\n"
+        msg += f"- 사용 모델명: {MODEL_NAME}\n"
+        msg += f"- API 키 출처: {_api_key_source}\n"
+        if _init_error:
+            msg += f"- 원본 오류: {_init_error}\n\n"
+        else:
+            msg += "- 원본 오류 메시지는 비어 있습니다.\n\n"
+        msg += (
+            "대부분은 다음 경우에 발생합니다.\n"
+            "1) MODEL_NAME 이 프로젝트에서 지원하지 않는 이름인 경우\n"
+            "2) API 키 권한/프로젝트가 다른 경우\n"
+            "3) google-generativeai 버전이 너무 오래된 경우\n\n"
+            "위 항목들을 한 번만 점검해 주시면, 이후에는 실제 AI 답변이 자연스럽게 이어집니다."
+        )
+        return msg
+
+    # 4) 정상적으로 모델이 준비된 경우 → 진짜 LLM 호출
+    msgs = [
+        {"role": "system", "parts": [system_instruction]},
+    ]
+
+    for msg in history:
+        role = msg.get("role", "ai")
+        text = msg.get("text", "")
+        if not text:
+            continue
+        g_role = "user" if role == "user" else "assistant"
+        msgs.append({"role": g_role, "parts": [text]})
+
+    msgs.append({"role": "user", "parts": [user_input]})
+
+    try:
+        res = _model.generate_content(msgs)
+        text = (res.text or "").strip()
+        if not text:
+            raise ValueError("empty response")
+        return text
+    except Exception as e:
+        # 런타임 호출 중 에러도 그대로 노출 (디버깅용)
+        return (
+            "원장님, Gemini 호출 중 예기치 못한 오류가 발생했습니다.\n\n"
+            f"- 예외 타입: {type(e).__name__}\n"
+            f"- 메시지: {str(e)}\n\n"
+            "google-generativeai 버전과 MODEL_NAME 설정을 다시 한 번 확인해 주셔야 합니다."
+        )
+
+
+# -----------------------------
+# 스테이지 전이 로직
+# -----------------------------
+def _get_next_stage(current_stage: str) -> str:
+    """한 번에 한 단계씩만 전진하도록 강제."""
+    flow = [
+        "initial",
+        "symptom_explore",
+        "sleep_check",
+        "digestion_check",
+        "tongue_select",
+        "conversion",
+        "complete",
+    ]
+
+    if current_stage not in flow:
+        return "symptom_explore"
+
+    idx = flow.index(current_stage)
+    if idx < len(flow) - 1:
+        return flow[idx + 1]
+    return current_stage
+
+
+# -----------------------------
+# 메인 엔트리
+# -----------------------------
+def generate_ai_response(
+    user_input: str,
+    context: Dict[str, Any],
+    history_for_llm: List[Dict[str, str]],
+) -> str:
+    """
+    app.py에서 호출하는 함수.
+
+    - context["stage"]를 읽어서 system prompt를 만든다.
+    - LLM을 호출해서 답변 텍스트를 받는다.
+    - 다음 단계(next_stage)를 '한 단계만' 전진시켜 [[STAGE:...]] 태그로 붙인다.
+    """
+    current_stage = context.get("stage", "initial")
+    system_instruction = _build_system_instruction(current_stage)
+
+    llm_text = _call_llm(system_instruction, history_for_llm, user_input)
+
+    # 다음 단계는 무조건 한 칸만 전진
+    next_stage = _get_next_stage(current_stage)
+
+    # app.py에서 [[STAGE:...]]를 파싱해서 stage를 업데이트한다
+    return f"{llm_text}\n\n[[STAGE:{next_stage}]]"
