@@ -1,4 +1,3 @@
-# lead_handler.py
 """
 IMD Sales / Medical Bot - Lead Handler
 구글 시트에 리드(문의/견적 요청) 저장하는 모듈
