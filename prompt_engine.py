@@ -1,20 +1,18 @@
 """
 prompt_engine.py
-한의원 AI 실장 데모용 프롬프트 엔진 + 디버그
+한의원 AI 실장 데모용 프롬프트 엔진 (GEMINI_API_KEY 사용 버전)
 
 역할:
 - app.py에서 넘겨준 context['stage']에 따라
   어떤 톤/내용으로 말할지 LLM에게 지시한다.
 - 단계 진행은 여기서 "한 단계씩"만 진행한다.
   initial → symptom_explore → sleep_check → digestion_check → tongue_select → conversion → complete
-
-중요 규칙:
-- tongue_select 이전에는 "혀", "설진", "혀 사진", "혀 상태" 같은 말 절대 금지.
 """
 
 from typing import Any, Dict, List
 import os
-import streamlit as st
+
+import streamlit as st  # Streamlit 환경에서만 돌아간다고 전제
 
 # -----------------------------
 # google-generativeai 로딩
@@ -25,12 +23,15 @@ except ImportError:
     genai = None
 
 # -----------------------------
-# API 키 로딩
+# 전역 상태 (디버그용)
 # -----------------------------
-_api_key_source = "none"
+_api_key_source: str = "none"
 _init_error: str = ""
+MODEL_NAME: str = "gemini-2.0-flash"
 
-
+# -----------------------------
+# API 키 로딩 (GEMINI_API_KEY 사용)
+# -----------------------------
 def _load_api_key() -> str:
     global _api_key_source
 
@@ -43,7 +44,7 @@ def _load_api_key() -> str:
     except Exception:
         pass
 
-    # 2) 혹시 나중에 환경변수로도 쓰고 싶으면
+    # 2) 환경 변수 (원하면 여기에도 넣어서 쓸 수 있음)
     key = os.getenv("GEMINI_API_KEY")
     if key:
         _api_key_source = "os.environ['GEMINI_API_KEY']"
@@ -53,13 +54,10 @@ def _load_api_key() -> str:
     return ""
 
 
-
 # -----------------------------
 # 모델 설정
 # -----------------------------
-MODEL_NAME = "gemini-2.0-flash"  # ✅ 네가 쓰는 모델 이름
-
-_api_key = _load_api_key()
+_api_key: str = _load_api_key()
 _model = None
 
 if genai is not None and _api_key:
@@ -67,17 +65,16 @@ if genai is not None and _api_key:
         genai.configure(api_key=_api_key)
         _model = genai.GenerativeModel(MODEL_NAME)
     except Exception as e:
-        # 여기서 에러 나면 _model은 None이 되고, 아래에서 에러 내용을 그대로 보여준다
         _model = None
         _init_error = f"{type(e).__name__}: {str(e)}"
 elif genai is None:
     _init_error = "ImportError: google-generativeai 미설치 또는 로딩 실패"
 elif not _api_key:
-    _init_error = "API 키 없음: GOOGLE_API_KEY를 st.secrets 또는 환경변수에서 찾지 못함"
+    _init_error = "GEMINI_API_KEY를 secrets/env에서 찾지 못함"
 
 
 def get_prompt_engine() -> Dict[str, Any]:
-    """app.py에서 형식상 호출하는 함수 (확장 여지용)."""
+    """app.py에서 형식상 호출하는 함수 (상태 확인용)."""
     return {
         "model": _model,
         "name": MODEL_NAME,
@@ -154,7 +151,6 @@ def _build_system_instruction(stage: str) -> str:
 지금 단계에서는:
 - 아직 혀/설진/사진 이야기를 꺼내지 않는다.
 - 소화/배변 관련 질문 2~3개를 던진다.
-- 마지막 한 줄 정도에 "이 다음에는 겉으로 보이는 신호도 함께 볼 예정" 정도만 예고.
 """
     elif stage == "tongue_select":
         specific = """
@@ -185,49 +181,52 @@ def _build_system_instruction(stage: str) -> str:
 
 
 # -----------------------------
-# LLM 호출 유틸 (디버그 강화)
+# LLM 호출 유틸 (항상 뭔가라도 말하게)
 # -----------------------------
-def _call_llm(system_instruction: str, history: List[Dict[str, str]], user_input: str) -> str:
+def _call_llm(
+    system_instruction: str,
+    history: List[Dict[str, str]],
+    user_input: str,
+) -> str:
     """
     Gemini 호출.
-    실패 시, 어디에서 막혔는지 원인을 한국어로 직접 알려준다.
+    - 라이브러리/키/모델 문제면 '디버그 설명'을 리턴.
+    - 정상일 때만 실제 LLM을 부른다.
     """
+
     # 1) 라이브러리 자체가 없는 경우
     if genai is None:
         return (
-            "원장님, 현재 서버에 google-generativeai 라이브러리가 설치되어 있지 않거나 "
-            "임포트에 실패했습니다.\n\n"
-            "- requirements.txt 에 `google-generativeai` 가 포함되어 있는지\n"
-            "- 배포 후 앱이 재시작되었는지\n"
-            "확인해 주셔야 실제 AI 답변이 가능합니다."
+            "[DEBUG] google-generativeai 미설치 또는 임포트 실패\n\n"
+            "requirements.txt 에 `google-generativeai` 를 추가하고 앱을 다시 배포해 주셔야 "
+            "실제 AI 답변이 가능합니다."
         )
 
     # 2) API 키를 못 찾은 경우
     if not _api_key:
         return (
-            "원장님, GOOGLE_API_KEY 값을 찾지 못했습니다.\n\n"
-            "다음 두 곳 중 하나에 반드시 설정이 필요합니다.\n"
-            "1) .streamlit/secrets.toml 파일에\n"
-            '   GOOGLE_API_KEY = "발급받으신_제미나이_API_키"\n'
-            "2) 또는 서버 환경 변수 GOOGLE_API_KEY 에 동일한 키를 설정\n\n"
-            "설정 후 앱을 다시 시작해 주셔야 합니다."
+            "[DEBUG] GEMINI_API_KEY 값을 찾지 못했습니다.\n\n"
+            "현재 prompt_engine.py는 다음 위치를 순서대로 확인합니다.\n"
+            "1) st.secrets['GEMINI_API_KEY']\n"
+            "2) os.environ['GEMINI_API_KEY']\n\n"
+            "Streamlit Secrets 또는 서버 환경 변수에 GEMINI_API_KEY를 설정하고 "
+            "앱을 다시 시작해 주세요."
         )
 
     # 3) 키는 있는데, 모델 초기화에서 에러가 난 경우
     if _model is None:
-        msg = "원장님, Gemini 모델 초기화 과정에서 오류가 발생했습니다.\n\n"
+        msg = "[DEBUG] Gemini 모델 초기화 실패\n\n"
         msg += f"- 사용 모델명: {MODEL_NAME}\n"
         msg += f"- API 키 출처: {_api_key_source}\n"
         if _init_error:
             msg += f"- 원본 오류: {_init_error}\n\n"
         else:
-            msg += "- 원본 오류 메시지는 비어 있습니다.\n\n"
+            msg += "- 원본 오류 메시지는 없습니다.\n\n"
         msg += (
             "대부분은 다음 경우에 발생합니다.\n"
             "1) MODEL_NAME 이 프로젝트에서 지원하지 않는 이름인 경우\n"
             "2) API 키 권한/프로젝트가 다른 경우\n"
-            "3) google-generativeai 버전이 너무 오래된 경우\n\n"
-            "위 항목들을 한 번만 점검해 주시면, 이후에는 실제 AI 답변이 자연스럽게 이어집니다."
+            "3) google-generativeai 버전이 너무 오래된 경우\n"
         )
         return msg
 
@@ -253,12 +252,12 @@ def _call_llm(system_instruction: str, history: List[Dict[str, str]], user_input
             raise ValueError("empty response")
         return text
     except Exception as e:
-        # 런타임 호출 중 에러도 그대로 노출 (디버깅용)
+        # 런타임 호출 중 에러도 문자열로 반환 (멈추지 않게)
         return (
-            "원장님, Gemini 호출 중 예기치 못한 오류가 발생했습니다.\n\n"
+            "[DEBUG] Gemini 호출 중 예기치 못한 오류 발생\n\n"
             f"- 예외 타입: {type(e).__name__}\n"
             f"- 메시지: {str(e)}\n\n"
-            "google-generativeai 버전과 MODEL_NAME 설정을 다시 한 번 확인해 주셔야 합니다."
+            "google-generativeai 버전과 MODEL_NAME, GEMINI_API_KEY 설정을 다시 한번 확인해 주세요."
         )
 
 
@@ -266,7 +265,7 @@ def _call_llm(system_instruction: str, history: List[Dict[str, str]], user_input
 # 스테이지 전이 로직
 # -----------------------------
 def _get_next_stage(current_stage: str) -> str:
-    """한 번에 한 단계씩만 전진하도록 강제."""
+    """한 번에 한 단계씩만 전진."""
     flow = [
         "initial",
         "symptom_explore",
@@ -309,5 +308,5 @@ def generate_ai_response(
     # 다음 단계는 무조건 한 칸만 전진
     next_stage = _get_next_stage(current_stage)
 
-    # app.py에서 [[STAGE:...]]를 파싱해서 stage를 업데이트한다
+    # app.py에서 [[STAGE:...]]를 파싱해서 stage를 업데이트할 수 있게 꼬리표를 붙인다.
     return f"{llm_text}\n\n[[STAGE:{next_stage}]]"
