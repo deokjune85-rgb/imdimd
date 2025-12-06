@@ -1,4 +1,3 @@
-# app_consulting.py
 """
 IMD Strategic Consulting - AI Sales Bot (B2B)
 한의원 원장님 대상 AI 실장 시스템 판매
@@ -15,7 +14,8 @@ from config import (
     COLOR_TEXT,
     COLOR_AI_BUBBLE,
     COLOR_USER_BUBBLE,
-    COLOR_BORDER
+    COLOR_BORDER,
+    TONGUE_TYPES
 )
 
 # ============================================
@@ -66,7 +66,7 @@ footer {{
 
 .title-box h1 {{
     font-family: Arial, sans-serif !important;
-    font-size: 24px !important;
+    font-size: 28px !important;
     font-weight: 700 !important;
     color: {COLOR_PRIMARY} !important;
     margin: 0 !important;
@@ -75,7 +75,7 @@ footer {{
 }}
 
 .title-box .sub {{
-    font-size: 12px;
+    font-size: 14px;
     color: #4B5563;
     margin-top: 4px;
 }}
@@ -96,7 +96,7 @@ footer {{
     margin: 16px 0 8px 0 !important;
     max-width: 85% !important;
     display: block !important;
-    font-size: 16px !important;
+    font-size: 18px !important;
     line-height: 1.5 !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
     border: none !important;
@@ -117,7 +117,7 @@ footer {{
     margin: 8px 0 !important;
     max-width: 70% !important;
     display: inline-block !important;
-    font-size: 15px !important;
+    font-size: 17px !important;
     line-height: 1.4 !important;
     border: none !important;
     outline: none !important;
@@ -129,6 +129,46 @@ footer {{
     display: block !important;
     width: 100% !important;
     margin-top: 16px !important;
+}}
+
+/* 혀 사진 가로 배열 */
+.tongue-grid {{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 20px;
+    max-width: 680px;
+    margin: 0 auto;
+}}
+
+.tongue-card {{
+    background: white;
+    border: 2px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}}
+
+.tongue-card:hover {{
+    border-color: {COLOR_PRIMARY};
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}}
+
+.tongue-card img {{
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}}
+
+.tongue-card .name {{
+    font-size: 12px;
+    font-weight: 600;
+    color: #1F2937;
+    margin-top: 4px;
 }}
 
 /* 입력창 */
@@ -226,7 +266,7 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .title-box h1 {{
-        font-size: 20px !important;
+        font-size: 24px !important;
         line-height: 1.1 !important;
     }}
     
@@ -235,8 +275,14 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .ai-msg {{
-        font-size: 14px !important;
+        font-size: 16px !important;
         padding: 11px 15px;
+    }}
+    
+    .tongue-grid {{
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 16px;
     }}
 }}
 </style>
@@ -306,6 +352,58 @@ for msg in conv_manager.get_history():
 
 chat_html += '</div>'
 st.markdown(chat_html, unsafe_allow_html=True)
+
+# ============================================
+# 혀 사진 선택 (digestion_check 단계 후 표시)
+# ============================================
+context = conv_manager.get_context()
+if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
+    st.markdown("---")
+    st.markdown(
+        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:20px 0;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
+        unsafe_allow_html=True
+    )
+    
+    # 1x4 가로 배열로 혀 사진 표시
+    tongue_html = '<div class="tongue-grid">'
+    
+    for tongue_key, tongue_data in TONGUE_TYPES.items():
+        tongue_html += f'''
+        <div class="tongue-card" onclick="selectTongue('{tongue_key}')">
+            <img src="/{tongue_data['image']}" alt="{tongue_data['name']}">
+            <div class="name">{tongue_data['emoji']} {tongue_data['name']}</div>
+        </div>
+        '''
+    
+    tongue_html += '</div>'
+    st.markdown(tongue_html, unsafe_allow_html=True)
+    
+    # 버튼 클릭 처리
+    cols = st.columns(4)
+    for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
+        with cols[idx]:
+            if st.button(f"{tongue_data['emoji']}", key=f"tongue_{tongue_key}", use_container_width=True):
+                conv_manager.update_context('selected_tongue', tongue_key)
+                conv_manager.update_stage('tongue_select')
+                
+                # 혀 진단 메시지 추가
+                diagnosis_msg = f"""**{tongue_data['name']}** 선택하셨습니다.
+
+{tongue_data['analysis']}
+
+**주요 증상**: {tongue_data['symptoms']}
+
+⚠️ **경고**: {tongue_data['warning']}
+
+이제 종합 건강 점수를 확인해보겠습니다."""
+                
+                conv_manager.add_message("ai", diagnosis_msg)
+                
+                # 건강 점수 계산
+                conv_manager.calculate_health_score()
+                conv_manager.update_stage('diagnosis')
+                
+                st.rerun()
 
 # ============================================
 # 자동 CTA (시뮬레이션 완료 후)
