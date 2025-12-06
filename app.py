@@ -71,7 +71,7 @@ st.markdown(
 }}
 
 .main .block-container {{
-    padding: 0 0 190px 0 !important;  /* 하단 패딩 추가해서 인풋/푸터에 안 가리게 */
+    padding: 0 !important;
     max-width: 720px !important;
     margin: 0 auto !important;
     background: white !important;
@@ -248,7 +248,7 @@ footer {{
 /* 입력창 */
 .stChatInput {{
     position: fixed !important;
-    bottom: 76px !important;  /* 푸터(약 52px) 위로 충분히 띄움 */
+    bottom: 60px !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
@@ -257,7 +257,6 @@ footer {{
     box-shadow: 0 -2px 6px rgba(0,0,0,0.08) !important;
     z-index: 999 !important;
     margin: 0 !important;
-    box-sizing: border-box !important;
 }}
 
 .stChatInput > div {{
@@ -297,7 +296,6 @@ footer {{
     color: #9CA3AF;
     border-top: 1px solid {COLOR_BORDER};
     z-index: 998;
-    box-sizing: border-box;
 }}
 
 .footer b {{
@@ -364,7 +362,6 @@ input::placeholder, textarea::placeholder {{
 @media (max-width: 768px) {{
     .main .block-container {{
         padding-top: 0 !important;
-        padding-bottom: 210px !important;  /* 모바일은 더 넉넉하게 */
     }}
     
     /* 모바일에서도 4개 columns 가로 유지 */
@@ -400,10 +397,6 @@ input::placeholder, textarea::placeholder {{
     
     .admin-log {{
         font-size: 14px !important;  /* 12px → 14px */
-    }}
-
-    .stChatInput {{
-        bottom: 82px !important;  /* 모바일에서 좀 더 올림 */
     }}
 }}
 </style>
@@ -983,7 +976,7 @@ if user_input:
 
 1️⃣ <b>증상 구체화</b>: "언제 제일 힘드세요?" (단순 피로 배제)
 2️⃣ <b>원인 추적</b>: 수면 → 소화 연결 (비기허 변증)
-3️⃣ <b>시각적 증거</b>: 혀 사진으로 확증 (치흔설/황태설 등)
+3️⃣ <b>시각적 증거</b>: 혀 사진으로 확증 (치흔설)
 4️⃣ <b>위기감 조성</b>: "쉬어서 낫는 단계 지났습니다"
 5️⃣ <b>솔루션 제안</b>: 녹용/공진단 필수성 각인
 
@@ -1004,3 +997,52 @@ if user_input:
 이 아래에 병원명, 성함, 연락처만 남겨주시면,
 24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
 """
+        conv_manager.add_message("ai", closing_msg)
+        conv_manager.update_stage("conversion")
+        st.rerun()
+
+    else:
+        # 로딩 연출 (1초 대기)
+        with st.spinner("🔬 환자 데이터 분석 중..."):
+            time.sleep(1)  # 1초 로딩
+            ai_response = generate_ai_response(user_input, context, history)
+
+        conv_manager.add_message("ai", ai_response)
+        
+        # 응답에 "혀" 키워드가 있으면 자동으로 혀 선택 단계로 전환
+        if "혀" in ai_response and current_stage in ["symptom_explore", "sleep_check", "digestion_check"]:
+            conv_manager.update_stage("tongue_select")
+        
+        st.rerun()
+
+# ============================================
+# 8. 완료 후 액션
+# ============================================
+if conv_manager.get_context()["stage"] == "complete":
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("새 상담 시작", use_container_width=True):
+            conv_manager.reset_conversation()
+            st.session_state.mode = "simulation"
+            st.session_state.conversation_count = 0
+            st.session_state.app_initialized = False
+            st.rerun()
+
+    with col2:
+        if st.button("상담 내역 보기", use_container_width=True):
+            with st.expander("상담 요약", expanded=True):
+                st.markdown(conv_manager.get_summary())
+
+# ============================================
+# 9. 푸터
+# ============================================
+st.markdown(
+    """
+<div class="footer">
+    <b>IMD Strategic Consulting</b><br>
+    한의원 전용 AI 매출 엔진 | 전국 일부 지역 독점 운영
+</div>
+""",
+    unsafe_allow_html=True,
+)
