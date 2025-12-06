@@ -792,7 +792,18 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
 # 일반 텍스트 입력
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
-if user_input:
+# 입력이 있으면 session_state에 저장만 하고 rerun
+if user_input and not st.session_state.get('processing_input'):
+    st.session_state.pending_input = user_input
+    st.session_state.processing_input = True
+    st.rerun()
+
+# 저장된 입력 처리
+if st.session_state.get('processing_input') and st.session_state.get('pending_input'):
+    user_input = st.session_state.pending_input
+    st.session_state.pending_input = None
+    st.session_state.processing_input = False
+    
     # 혀 타입 텍스트 자동 인식
     detected_tongue = None
     for tongue_key in ['담백설', '치흔설', '황태설', '자색설']:
