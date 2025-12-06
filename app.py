@@ -131,6 +131,23 @@ footer {{
     margin-top: 16px !important;
 }}
 
+/* 새로 추가된 마지막 말풍선 부드러운 등장 효과 */
+.msg-new {{
+    opacity: 0;
+    animation: smoothAppear 0.28s ease-out forwards;
+}}
+
+@keyframes smoothAppear {{
+    from {{
+        opacity: 0;
+        transform: translateY(6px);
+    }}
+    to {{
+        opacity: 1;
+        transform: translateY(0);
+    }}
+}}
+
 /* 입력창 */
 .stChatInput {{
     position: fixed !important;
@@ -359,30 +376,34 @@ st.markdown("""
 # 채팅 히스토리
 # ============================================
 with st.container():
+    history = conv_manager.get_history()
     chat_html = '<div class="chat-area">'
 
-    for msg in conv_manager.get_history():
+    for idx, msg in enumerate(history):
+        is_last = (idx == len(history) - 1)
+        new_class = " msg-new" if is_last else ""
+
         if msg['role'] == 'ai':
-            chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
+            chat_html += f'<div class="ai-msg{new_class}">{msg["text"]}</div>'
         elif msg['role'] == 'user':
-            chat_html += f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
+            chat_html += (
+                f'<div class="msg-right">'
+                f'<span class="user-msg{new_class}">{msg["text"]}</span>'
+                f'</div>'
+            )
 
     chat_html += '</div>'
     st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
-# 혀 사진 선택 (digestion_check 단계 후 표시)
+# 혀 사진 선택 (tongue_select 단계에서 표시)
 # ============================================
 context = conv_manager.get_context()
 chat_history = conv_manager.get_history()
 
-# digestion_check이고, 혀 미선택이고, 마지막 메시지에 "거울" 또는 "혀" 포함 시에만 UI 표시
 show_tongue_ui = (
-    context.get('stage') == 'digestion_check' 
+    context.get('stage') == 'tongue_select'
     and not context.get('selected_tongue')
-    and chat_history 
-    and chat_history[-1]['role'] == 'ai'
-    and ('거울' in chat_history[-1]['text'] or '혀' in chat_history[-1]['text'])
 )
 
 if show_tongue_ui:
@@ -392,38 +413,30 @@ if show_tongue_ui:
             unsafe_allow_html=True
         )
         
-        # 1x4 가로 배열로 혀 사진 표시
         cols = st.columns(4)
-        
         from PIL import Image
         
         for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
             with cols[idx]:
-                # 혀 사진 표시
                 image_path = tongue_data['image']
                 
                 try:
                     img = Image.open(image_path)
                     st.image(img, use_container_width=True)
-                except Exception as e:
-                    # 이미지 로드 실패시 이모지로 대체
+                except Exception:
                     st.markdown(
                         f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
                         unsafe_allow_html=True
                     )
                 
-                # 이름 표시 - 검은색으로 변경
                 st.markdown(
                     f"<div style='text-align:center; font-size:13px; font-weight:600; margin:4px 0; color:#1F2937;'>{tongue_data['name']}</div>",
                     unsafe_allow_html=True
                 )
                 
-                # 선택 버튼
-                if st.button(f"선택", key=f"tongue_{tongue_key}", use_container_width=True):
+                if st.button("선택", key=f"tongue_{tongue_key}", use_container_width=True):
                     conv_manager.update_context('selected_tongue', tongue_key)
-                    conv_manager.update_stage('tongue_select')
                     
-                    # 혀 진단 메시지 추가
                     diagnosis_msg = f"""**{tongue_data['name']}** 선택하셨습니다.
 
 {tongue_data['analysis']}
@@ -459,24 +472,20 @@ if show_tongue_ui:
                     
                     conv_manager.add_message("ai", diagnosis_msg)
                     
-                    # 건강 점수 계산
                     conv_manager.calculate_health_score()
-                    conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
+                    conv_manager.update_stage('conversion')
                     
                     st.rerun()
         
-        # 투명 스페이서 버튼 (채팅창 가림 방지용)
         st.markdown('<div style="height:150px;"></div>', unsafe_allow_html=True)
 
 # ============================================
 # 자동 CTA (시뮬레이션 완료 후)
 # ============================================
 chat_history = conv_manager.get_history()
-last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
-current_stage = conv_manager.get_context()['stage']
+current_stage = conv_manager.get_context().get('stage', 'initial')
 selected_tongue = conv_manager.get_context().get('selected_tongue')
 
-# conversion 단계이고 혀를 선택했을 때만 CTA 표시
 if current_stage == 'conversion' and selected_tongue and current_stage != 'complete':
     with st.container():
         st.markdown("---")
@@ -543,266 +552,59 @@ if current_stage == 'conversion' and selected_tongue and current_stage != 'compl
                         st.error(f"오류: {message}")
 
 # ============================================
-# 입력창
-# ============================================
-# ============================================
-# 입력창
+# 입력창 + LLM 기반 응답 (STAGE 태깅)
 # ============================================
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
 if user_input:
-    # 유저 메시지 저장
+    # 1) 유저 메시지 저장
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
     
-    # 대화 카운트 증가
+    # 2) 대화 카운트 증가
     if 'conversation_count' not in st.session_state:
         st.session_state.conversation_count = 0
     st.session_state.conversation_count += 1
     
+    # 3) 컨텍스트 & 히스토리 준비
     context = conv_manager.get_context()
-    current_stage = context.get('stage', 'initial')
-    history = conv_manager.get_formatted_history(for_llm=True)
-    user_lower = user_input.lower()
-
-    # ----------------------------------------
-    # 1) 초기 단계: 증상 타입 분류 + 첫 멘트 분기
-    # ----------------------------------------
-    if current_stage == 'initial':
-        # 근골격계 통증 (허리/목/어깨/무릎/관절 등)
-        if any(word in user_lower for word in ['허리', '목', '어깨', '무릎', '관절', '디스크', '척추', '허벅지', '골반']):
-            conv_manager.update_context('main_symptom', 'msk_pain')
-            ai_response = """허리나 관절 쪽 통증 때문에 많이 힘드셨겠습니다.
-
-근육이 단순히 뭉친 건지, 디스크·관절·혈행 문제인지에 따라 접근이 완전히 달라집니다.
-
-**몇 가지만 여쭤보겠습니다.**
-- 통증이 처음 느껴진 건 언제쯤인가요?
-- 오래 앉아 있거나, 오래 서 있을 때 더 심해지나요?
-- 아침에 일어날 때가 더 뻐근한 편이신가요, 아니면 저녁에 더 아프신가요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-        # 다리 쥐 / 저림 / 다리 위주 통증
-        elif any(word in user_lower for word in ['쥐', '저림', '저리', '종아리', '발바닥', '다리 통증']):
-            conv_manager.update_context('main_symptom', 'leg_cramp')
-            ai_response = """다리에 쥐가 나거나 저리신다니, 일상생활이 많이 불편하셨을 것 같습니다.
-
-혈액 순환이나 근육·신경 쪽 문제일 가능성이 있습니다.
-
-**구체적으로 여쭤보겠습니다.**
-- 주로 언제 쥐가 나나요? (자다가? 걷다가? 오래 서 있을 때?)
-- 다리의 어느 부위가 가장 심하게 쥐가 나나요? (종아리? 허벅지? 발바닥?)
-- 평소 발이 차갑거나 얼음장처럼 느껴질 때가 있나요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-        # 다이어트 / 체중
-        elif any(word in user_lower for word in ['다이어트', '살', '체중', '뚱뚱', '비만', '빠지', '감량']):
-            conv_manager.update_context('main_symptom', 'weight')
-            ai_response = """체중 관리 때문에 스트레스가 많으시겠네요.
-
-한의학에서는 '얼마나 먹느냐'보다, **대사가 얼마나 잘 돌아가느냐**를 더 중요하게 봅니다.
-
-**몇 가지 여쭤보겠습니다.**
-- 식사량은 다른 사람들과 비교했을 때 어떤 편이신가요?
-- 붓기가 심하거나, 저녁이 되면 발목이 퉁퉁 붓는 느낌이 있으신가요?
-- 야식이나 군것질을 자주 하시는 편인가요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-        # 불면 / 수면 / 잠
-        elif any(word in user_lower for word in ['잠', '수면', '불면', '못자', '새벽', '깨', '잠이 안']):
-            conv_manager.update_context('main_symptom', 'sleep')
-            ai_response = """수면이 잘 안 되신다는 건, 이미 몸이 꽤 오래전부터 신호를 보내고 있었다는 뜻입니다.
-
-**조금만 더 구체적으로 여쭤보겠습니다.**
-- 잠드는 데 시간이 오래 걸리시나요, 아니면 자다가 자주 깨시나요?
-- 새벽 몇 시쯤 가장 많이 깨시나요?
-- 누웠을 때 생각이 많아서 머리가 멈추질 않는 느낌이 있으신가요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-        # 소화 / 속 / 더부룩
-        elif any(word in user_lower for word in ['소화', '속', '더부룩', '체했', '명치', '배 아픈', '복통']):
-            conv_manager.update_context('main_symptom', 'digestion')
-            ai_response = """소화가 불편하시면, 먹는 즐거움도 사라지고 하루 컨디션이 전반적으로 무너집니다.
-
-**증상을 조금 더 자세히 알려주세요.**
-- 식사 후 바로 속이 더부룩해지시나요, 아니면 시간이 지나서 불편해지나요?
-- 트림이 자주 나오거나, 명치 쪽이 답답한 느낌이 있으신가요?
-- 변비나 설사처럼 대변 패턴이 자주 바뀌는 편이신가요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-        # 두통 / 어지럼
-        elif any(word in user_lower for word in ['두통', '머리 아파', '어지럼', '현기증']):
-            conv_manager.update_context('main_symptom', 'headache')
-            ai_response = """두통이나 어지럼증은 일상생활의 '질'을 완전히 떨어뜨려 버립니다.
-
-**패턴을 먼저 파악해보겠습니다.**
-- 통증이 머리 어디 쪽에 더 심하게 오나요? (앞이마, 관자놀이, 뒤통수 등)
-- 주로 어떤 때 더 심해지시나요? (스트레스 받을 때, 컴퓨터 오래 할 때 등)
-- 어지러울 때 메스꺼움이나 귀에서 소리가 나는 증상도 있으신가요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-        # 그 외 → 기본 피로 루트
-        else:
-            conv_manager.update_context('main_symptom', 'fatigue')
-            ai_response = """말씀만 들어도 요즘 많이 지치고 고단하신 게 느껴집니다.
-
-정확히 짚으려면, **언제 가장 힘든지**부터 보는 게 좋습니다.
-
-**언제 가장 기운이 쭉 빠지시나요?**
-- 아침에 눈을 뜰 때부터 힘이 없으신가요?
-- 오후 시간이 되면 갑자기 체력이 꺼지는 느낌이 드나요?
-- 아니면 하루종일 계속, '방전된 상태'처럼 느껴지시나요?"""
-            conv_manager.add_message("ai", ai_response)
-            conv_manager.update_stage('symptom_explore')
-            st.rerun()
-
-    # ----------------------------------------
-    # 2) 증상 탐색 단계: main_symptom에 따라 멘트 분기
-    # ----------------------------------------
-    elif current_stage == 'symptom_explore':
-        main_symptom = context.get('main_symptom', 'fatigue')
-
-        if main_symptom == 'msk_pain':
-            ai_response = """통증 양상을 들어보니, 단순 피로성 근육통인지, 구조적인 문제인지 구분이 필요해 보입니다.
-
-이번에는 **몸이 쉬어도 회복이 되는지**를 체크해보겠습니다.
-
-**수면은 어떠신가요?**
-- 평균 몇 시간 정도 주무시나요?
-- 자고 일어나도 통증과 피로가 그대로인 느낌이신가요?
-- 통증 때문에 새벽에 깨는 날도 있으신가요?"""
-        
-        elif main_symptom == 'leg_cramp':
-            ai_response = """다리 쪽으로 증상이 몰려 있으면, 순환·수분대사·근육 피로가 한꺼번에 얽혀 있는 경우가 많습니다.
-
-이번에는 **밤사이 회복이 되는지**를 보겠습니다.
-
-**수면 상태를 여쭤볼게요.**
-- 잠은 평균 몇 시간 정도 주무시나요?
-- 자고 일어나도 다리가 무겁거나 뻐근한 느낌이 남아 있나요?
-- 자다가 쥐 때문에 깨는 날이 자주 있으신가요?"""
-
-        elif main_symptom == 'weight':
-            ai_response = """체중 문제는 결국 '자고 일어났을 때 몸이 얼마나 회복되느냐'와도 연결됩니다.
-
-**수면과 피로도를 같이 보겠습니다.**
-- 보통 몇 시간 정도 주무시나요?
-- 자고 일어나도 몸이 무겁고, 붓기가 그대로인 날이 많으신가요?
-- 주말에 아무리 늦잠을 자도 피로가 잘 안 풀리는 편이신가요?"""
-
-        elif main_symptom == 'sleep':
-            ai_response = """말씀해 주신 내용을 보면, 단순한 '잠 문제'가 아니라, 몸의 에너지 시스템 전체가 흔들려 있는 경우일 수 있습니다.
-
-이제는 **잠의 '양'이 아니라 '질'**을 보겠습니다.
-
-**조금만 더 여쭙겠습니다.**
-- 자고 일어나도 머리가 맑지 않고, 안개 낀 느낌이신가요?
-- 낮 동안에도 졸리지만, 막상 누우면 잘 안 주무셔지나요?
-- 주말에도 평소와 비슷한 시간에 깨 버리는 편이신가요?"""
-
-        elif main_symptom == 'digestion':
-            ai_response = """소화가 안 되면, 먹은 것이 에너지로 바뀌지 못해서 만성 피로·통증까지 이어지는 경우가 많습니다.
-
-이번에는 **잠을 통해 회복이 되는지**를 보겠습니다.
-
-**수면에 대해 여쭤볼게요.**
-- 평균 몇 시간 정도 주무시나요?
-- 자고 일어나도 속이 더부룩하거나, 아침부터 피곤한 날이 많으신가요?
-- 밤 늦게 먹고 바로 누웠을 때 특히 더 불편해지시나요?"""
-
-        elif main_symptom == 'headache':
-            ai_response = """두통·어지럼은 수면의 질과 굉장히 밀접하게 연결되어 있습니다.
-
-이번에는 **잠과 두통의 관계**를 살펴보겠습니다.
-
-**수면 상태는 어떠신가요?**
-- 보통 몇 시간 정도 주무시나요?
-- 잠이 부족한 날에는 두통이 더 심해지는 편인가요?
-- 자고 일어나도 머리가 무겁고 띵한 느낌이 자주 있으신가요?"""
-
-        else:  # 기본 피로
-            ai_response = """그 시간대에 특히 힘드시다는 건, 단순히 '일이 많아서'가 아니라 몸의 회복 시스템이 제대로 작동하지 않는 신호일 수 있습니다.
-
-이번에는 **수면 상태**를 체크해보겠습니다.
-
-**잠은 어떠세요?**
-- 평균 몇 시간 정도 주무시나요?
-- 자고 일어나도 개운한 날보다 축 늘어진 날이 더 많으신가요?
-- 주말에 몰아서 자도 피로가 잘 안 풀리는 편인가요?"""
-
-        conv_manager.add_message("ai", ai_response)
-        conv_manager.update_stage('sleep_check')
-        st.rerun()
-
-    # ----------------------------------------
-    # 3) 수면 확인 단계 → 소화 질문
-    # ----------------------------------------
-    elif current_stage == 'sleep_check':
-        ai_response = """수면 패턴을 보니, 단순 과로나 나이 탓이라고 넘기기에는 아까운 상태입니다.
-
-이번에는 **소화와 에너지 생성 능력**을 보겠습니다.
-
-**소화는 어떠세요?**
-- 식사 후에 더 피곤해지시나요, 아니면 공복일 때 더 힘드신가요?
-- 속이 더부룩하거나, 명치 쪽이 답답한 느낌이 자주 있으신가요?
-- 대변은 규칙적인 편인가요, 아니면 변비·설사가 번갈아 오나요?"""
-        conv_manager.add_message("ai", ai_response)
-        conv_manager.update_stage('digestion_check')
-        st.rerun()
-
-    # ----------------------------------------
-    # 4) 소화 확인 단계 → 혀 선택 안내
-    # ----------------------------------------
-    elif current_stage == 'digestion_check':
-        ai_response = """지금까지 말씀해 주신 패턴을 보면, 몸이 에너지를 만드는 '공장'인 비위(소화기) 쪽에 부담이 많이 쌓여 있는 상태일 가능성이 높습니다.
-
-이제는 겉으로 보이는 **혀 상태**를 통해, 안쪽 장기의 상태를 한 번 더 교차 확인해보겠습니다.
-
-거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요."""
-        conv_manager.add_message("ai", ai_response)
-        # stage는 그대로 유지 (혀 선택 UI가 나와야 함)
-        st.rerun()
-
-    # ----------------------------------------
-    # 5) 그 외 단계 → 일반 AI 응답 (자유 대화)
-    # ----------------------------------------
+    history_for_llm = conv_manager.get_formatted_history(for_llm=True)
+    
+    # 4) LLM 호출 (자유 발화 + 단계 결정은 LLM 쪽에서)
+    raw_output = generate_ai_response(user_input, context, history_for_llm)
+    # 예: "~~~상담 멘트~~~\n\n[[STAGE:sleep_check]]"
+    
+    next_stage = None
+    ai_text = raw_output
+    
+    # 5) [[STAGE:...]] 메타 태그 파싱
+    if isinstance(raw_output, str) and "[[STAGE:" in raw_output:
+        try:
+            text_part, meta_part = raw_output.split("[[STAGE:", 1)
+            stage_token = meta_part.split("]]", 1)[0].strip()
+            ai_text = text_part.strip()
+            next_stage = stage_token
+        except Exception:
+            ai_text = raw_output.strip()
+            next_stage = None
     else:
-        time.sleep(1.0)
-        ai_response = generate_ai_response(user_input, context, history)
-        conv_manager.add_message("ai", ai_response)
-        st.rerun()
+        if isinstance(raw_output, str):
+            ai_text = raw_output.strip()
+        else:
+            ai_text = str(raw_output)
+    
+    # 6) AI 메시지 저장
+    conv_manager.add_message("ai", ai_text)
+    
+    # 7) stage 업데이트 (있으면)
+    if next_stage:
+        conv_manager.update_stage(next_stage)
+    
+    st.rerun()
 
 # ============================================
 # 완료 후
 # ============================================
-if conv_manager.get_context()['stage'] == 'complete':
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("새 상담 시작", use_container_width=True):
-            conv_manager.reset_conversation()
-            st.rerun()
-    
-    with col2:
-        if st.button("상담 내역 보기", use_container_width=True):
-            with st.expander("상담 요약", expanded=True):
-                st.markdown(conv_manager.get_summary())
-
-# ============================================
-# 완료 후
-# ============================================
-if conv_manager.get_context()['stage'] == 'complete':
+if conv_manager.get_context().get('stage') == 'complete':
     col1, col2 = st.columns(2)
     
     with col1:
