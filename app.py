@@ -926,6 +926,8 @@ if user_input:
     
     # ===== 수동 응답: 단계별 분석 =====
     
+    manual_response_given = False  # 수동 응답 플래그
+    
     # 1단계: 첫 증상 입력 → 수면 질문
     if st.session_state.conversation_count == 1:
         response_msg = """
@@ -937,8 +939,7 @@ if user_input:
 """
         conv_manager.add_message("ai", response_msg)
         conv_manager.update_stage("sleep_check")
-        st.rerun()
-        st.stop()
+        manual_response_given = True
     
     # 2단계: 수면 답변 → 소화 질문
     elif st.session_state.conversation_count == 2:
@@ -952,8 +953,7 @@ if user_input:
 """
         conv_manager.add_message("ai", response_msg)
         conv_manager.update_stage("digestion_check")
-        st.rerun()
-        st.stop()
+        manual_response_given = True
     
     # 3단계: 소화 답변 → 혀 선택
     elif st.session_state.conversation_count == 3:
@@ -973,8 +973,11 @@ if user_input:
 """
         conv_manager.add_message("ai", response_msg)
         conv_manager.update_stage("tongue_select")
+        manual_response_given = True
+    
+    # 수동 응답이 있으면 여기서 종료 (API 호출 건너뛰기)
+    if manual_response_given:
         st.rerun()
-        st.stop()
     
     # solution 단계에서 "네" 또는 긍정 답변 시 자동 클로징
     if context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
