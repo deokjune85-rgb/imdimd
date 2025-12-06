@@ -306,7 +306,6 @@ div[data-testid="stException"] {{
 """,
     unsafe_allow_html=True,
 )
-st.sidebar.write("DEBUG | has_api_key:", bool(prompt_engine.get("model")))
 
 # ============================================
 # 초기화
