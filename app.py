@@ -572,6 +572,165 @@ if (
 # ============================================
 # 7. 입력창 + AI 응답
 # ============================================
+
+# 현재 대화 단계 확인
+current_stage = conv_manager.get_context().get("stage", "symptom_explore")
+
+# 혀 선택 단계인 경우 → 버튼 UI 표시
+if current_stage == "tongue_select" and not st.session_state.get("tongue_selected"):
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='text-align:center; color:#1F2937; font-weight:600; font-size:18px; margin:20px 0;'>"
+        "📸 거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    
+    # 4개 혀 사진 버튼 (2x2 그리드)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 담백설
+        tongue_type = '담백설'
+        if tongue_type in TONGUE_TYPES:
+            info = TONGUE_TYPES[tongue_type]
+            image_path = info.get('image', '')
+            
+            if image_path:
+                try:
+                    st.image(image_path, use_container_width=True)
+                except Exception:
+                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            
+            if st.button(f"👆 {info['visual']}", key="btn_담백설", use_container_width=True):
+                st.session_state.tongue_selected = True
+                conv_manager.update_context("selected_tongue", tongue_type)
+                conv_manager.add_message("user", f"[선택: {info['visual']}]")
+                
+                analysis_msg = f"""
+<b>{info['name']}</b>을 선택하셨군요.
+
+{info['analysis']}
+
+주요 증상: {info['symptoms']}
+
+<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+
+환자분, 이건 쉬어서 낫는 단계가 지났습니다.
+하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+"""
+                conv_manager.add_message("ai", analysis_msg)
+                conv_manager.update_stage("diagnosis")
+                st.rerun()
+        
+        # 황태설
+        tongue_type = '황태설'
+        if tongue_type in TONGUE_TYPES:
+            info = TONGUE_TYPES[tongue_type]
+            image_path = info.get('image', '')
+            
+            if image_path:
+                try:
+                    st.image(image_path, use_container_width=True)
+                except Exception:
+                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            
+            if st.button(f"👆 {info['visual']}", key="btn_황태설", use_container_width=True):
+                st.session_state.tongue_selected = True
+                conv_manager.update_context("selected_tongue", tongue_type)
+                conv_manager.add_message("user", f"[선택: {info['visual']}]")
+                
+                analysis_msg = f"""
+<b>{info['name']}</b>을 선택하셨군요.
+
+{info['analysis']}
+
+주요 증상: {info['symptoms']}
+
+<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+
+환자분, 이건 쉬어서 낫는 단계가 지났습니다.
+"""
+                conv_manager.add_message("ai", analysis_msg)
+                conv_manager.update_stage("diagnosis")
+                st.rerun()
+    
+    with col2:
+        # 치흔설
+        tongue_type = '치흔설'
+        if tongue_type in TONGUE_TYPES:
+            info = TONGUE_TYPES[tongue_type]
+            image_path = info.get('image', '')
+            
+            if image_path:
+                try:
+                    st.image(image_path, use_container_width=True)
+                except Exception:
+                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            
+            if st.button(f"👆 {info['visual']}", key="btn_치흔설", use_container_width=True):
+                st.session_state.tongue_selected = True
+                conv_manager.update_context("selected_tongue", tongue_type)
+                conv_manager.add_message("user", f"[선택: {info['visual']}]")
+                
+                analysis_msg = f"""
+<b>{info['name']}</b>을 선택하셨군요.
+
+{info['analysis']}
+
+주요 증상: {info['symptoms']}
+
+<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+
+보이시나요? 혀 가장자리가 울퉁불퉁하죠?
+혀가 부어서 이빨에 눌린 자국입니다.
+몸이 물 먹은 솜처럼 퉁퉁 불어 순환이 막혔다는 명백한 증거입니다.
+"""
+                conv_manager.add_message("ai", analysis_msg)
+                conv_manager.update_stage("diagnosis")
+                st.rerun()
+        
+        # 자색설
+        tongue_type = '자색설'
+        if tongue_type in TONGUE_TYPES:
+            info = TONGUE_TYPES[tongue_type]
+            image_path = info.get('image', '')
+            
+            if image_path:
+                try:
+                    st.image(image_path, use_container_width=True)
+                except Exception:
+                    st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
+            
+            if st.button(f"👆 {info['visual']}", key="btn_자색설", use_container_width=True):
+                st.session_state.tongue_selected = True
+                conv_manager.update_context("selected_tongue", tongue_type)
+                conv_manager.add_message("user", f"[선택: {info['visual']}]")
+                
+                analysis_msg = f"""
+<b>{info['name']}</b>을 선택하셨군요.
+
+{info['analysis']}
+
+주요 증상: {info['symptoms']}
+
+<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+
+환자분, 이건 쉬어서 낫는 단계가 지났습니다.
+"""
+                conv_manager.add_message("ai", analysis_msg)
+                conv_manager.update_stage("diagnosis")
+                st.rerun()
+
+# 일반 텍스트 입력
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
 if user_input:
@@ -632,6 +791,11 @@ if user_input:
             ai_response = generate_ai_response(user_input, context, history)
 
         conv_manager.add_message("ai", ai_response)
+        
+        # 응답에 "혀" 키워드가 있으면 자동으로 혀 선택 단계로 전환
+        if "혀" in ai_response and current_stage in ["symptom_explore", "sleep_check", "digestion_check"]:
+            conv_manager.update_stage("tongue_select")
+        
         st.rerun()
 
 # ============================================
