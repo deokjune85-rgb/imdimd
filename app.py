@@ -605,10 +605,10 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
         unsafe_allow_html=True,
     )
     
-    # 4개 혀 사진 버튼 (2x2 그리드)
-    col1, col2 = st.columns(2)
+    # 가로 4장 일렬 배치
+    c1, c2, c3, c4 = st.columns(4)
     
-    with col1:
+    with c1:
         # 담백설
         tongue_type = '담백설'
         if tongue_type in TONGUE_TYPES:
@@ -662,7 +662,8 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.update_stage("conversion")
                 st.session_state.mode = "closing"
                 st.rerun()
-        
+    
+    with c2:
         # 황태설
         tongue_type = '황태설'
         if tongue_type in TONGUE_TYPES:
@@ -717,7 +718,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 st.session_state.mode = "closing"
                 st.rerun()
     
-    with col2:
+    with c3:
         # 치흔설
         tongue_type = '치흔설'
         if tongue_type in TONGUE_TYPES:
@@ -773,7 +774,8 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.update_stage("conversion")
                 st.session_state.mode = "closing"
                 st.rerun()
-        
+    
+    with c4:
         # 자색설
         tongue_type = '자색설'
         if tongue_type in TONGUE_TYPES:
