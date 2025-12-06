@@ -498,6 +498,15 @@ if user_input:
     context = conv_manager.get_context()
     history = conv_manager.get_formatted_history(for_llm=True)
     
+    # AI 응답 생성
+    time.sleep(1.0)
+    ai_response = generate_ai_response(user_input, context, history)
+    conv_manager.add_message("ai", ai_response)
+    
+    # AI 응답에 "혀" 키워드가 있으면 digestion_check 단계로 전환
+    if "혀" in ai_response or "설진" in ai_response:
+        conv_manager.update_stage('digestion_check')
+    
     # 3회 이상 대화 시 클로징 모드로 전환
     if st.session_state.conversation_count >= 3 and st.session_state.mode == 'simulation':
         st.session_state.mode = 'closing'
@@ -522,12 +531,8 @@ if user_input:
 
 폭발적인 매출 신화가 아니라, 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 조금씩 대신 떠받쳐주는 결과입니다."""
         conv_manager.add_message("ai", closing_msg)
-        st.rerun()
-    else:
-        time.sleep(1.0)
-        ai_response = generate_ai_response(user_input, context, history)
-        conv_manager.add_message("ai", ai_response)
-        st.rerun()
+    
+    st.rerun()
 
 # ============================================
 # 완료 후
