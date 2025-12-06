@@ -2,6 +2,7 @@
 """
 IMD Sales Bot - Conversation State Management
 대화 히스토리, 컨텍스트, 사용자 의도 관리
+비주얼 예진 센터 플로우 지원
 """
 
 import streamlit as st
@@ -19,14 +20,17 @@ class ConversationManager:
         
         if 'user_context' not in st.session_state:
             st.session_state.user_context = {
-                'user_type': None,        # 병원/쇼핑몰
-                'pain_point': None,       # 주요 고민
-                'urgency': None,          # 긴급도
-                'budget_sense': None,     # 가격 민감도
-                'trust_level': 0,         # 신뢰도 (0-100)
-                'stage': 'initial',       # 대화 단계
-                'keywords': [],           # 언급된 키워드들
-                'objections': [],         # 반박/우려 사항
+                'user_type': '한의원',        # 기본값
+                'selected_symptom': None,     # 🔋/🤕/🥣/🌿
+                'selected_tongue': None,      # 담백설/치흔설/황태설/자색설
+                'health_score': 0,            # 레이더 차트 종합 점수
+                'pain_point': None,           # 주요 고민
+                'urgency': None,              # 긴급도
+                'budget_sense': None,         # 가격 민감도
+                'trust_level': 0,             # 신뢰도 (0-100)
+                'stage': 'initial',           # 대화 단계
+                'keywords': [],               # 언급된 키워드들
+                'objections': [],             # 반박/우려 사항
             }
         
         if 'interaction_count' not in st.session_state:
@@ -53,7 +57,7 @@ class ConversationManager:
         if role == 'user':
             st.session_state.interaction_count += 1
             self._update_trust_level()
-            self._extract_context(text)
+            self._extract_context(text, metadata)
     
     def get_history(self, limit: Optional[int] = None) -> List[Dict]:
         """
@@ -100,15 +104,23 @@ class ConversationManager:
         else:
             return history
     
-    def _extract_context(self, text: str):
+    def _extract_context(self, text: str, metadata: Optional[Dict] = None):
         """
-        사용자 입력에서 컨텍스트 추출 (키워드 기반)
+        사용자 입력에서 컨텍스트 추출 (키워드 기반 + 메타데이터)
         
         Args:
             text: 사용자 메시지
+            metadata: 클릭/선택 정보
         """
         text_lower = text.lower()
         context = st.session_state.user_context
+        
+        # 메타데이터에서 직접 추출
+        if metadata:
+            if metadata.get('type') == 'symptom_select':
+                context['selected_symptom'] = metadata.get('value')
+            elif metadata.get('type') == 'tongue_select':
+                context['selected_tongue'] = metadata.get('value')
         
         # 1. 업종 파악
         if any(word in text_lower for word in ['병원', '의원', '성형', '피부과', '한의원', '치과']):
@@ -153,66 +165,57 @@ class ConversationManager:
         대화 진행도에 따라 신뢰도 업데이트
         신뢰도 = 인터랙션 수 * 10 (최대 100)
         """
-        # AI 응답 포함해서 총 메시지 수로 계산
-        total_messages = len(st.session_state.chat_history)
         # 사용자 메시지만 카운트 (AI 제외)
         user_messages = sum(1 for msg in st.session_state.chat_history if msg['role'] == 'user')
         
-        trust = min(user_messages * 10, 100)
+        trust = min(user_messages * 15, 100)  # 버튼 클릭도 카운트되므로 15점씩
         st.session_state.user_context['trust_level'] = trust
+    
+    def calculate_health_score(self) -> int:
+        """
+        선택한 혀 타입 기반으로 건강 점수 계산
+        
+        Returns:
+            종합 건강 점수 (0-100)
+        """
+        from config import TONGUE_TYPES
+        
+        tongue = st.session_state.user_context.get('selected_tongue')
+        if not tongue or tongue not in TONGUE_TYPES:
+            return 50  # 기본값
+        
+        scores = TONGUE_TYPES[tongue]['scores']
+        # 5개 항목 평균
+        avg_score = sum(scores.values()) / len(scores)
+        
+        # 컨텍스트에 저장
+        st.session_state.user_context['health_score'] = int(avg_score)
+        
+        return int(avg_score)
     
     def is_ready_for_conversion(self) -> bool:
         """
         리드 전환 타이밍 판단
+        - 레이더 차트까지 본 후 (result_view 단계)
         """
-        # 신뢰도를 매번 재계산
-        self._update_trust_level()
-        
         context = st.session_state.user_context
+        stage = context.get('stage', 'initial')
         
-        # User 메시지 개수로 직접 판단
-        user_message_count = sum(1 for msg in st.session_state.chat_history if msg['role'] == 'user')
-        
-        # 조건 1: 긴급 버튼 눌렀으면 즉시
-        if context.get('urgency') == 'high':
-            return True
-        
-        # 조건 2: 4번 이상 답변했으면 무조건 폼
-        if user_message_count >= 4:
-            return True
-        
-        return False
-    
-    def get_recommended_buttons(self) -> List[str]:
-        """
-        현재 컨텍스트 기반 추천 버튼 생성
-        
-        Returns:
-            버튼 텍스트 리스트
-        """
-        from config import QUICK_REPLIES
-        
-        context = st.session_state.user_context
-        stage = context['stage']
-        
-        # 스테이지별 버튼
-        if stage == 'initial':
-            return QUICK_REPLIES['initial']
-        elif context['user_type'] == '병원':
-            return QUICK_REPLIES['hospital']
-        elif context['user_type'] == '쇼핑몰':
-            return QUICK_REPLIES['commerce']
-        elif self.is_ready_for_conversion():
-            return QUICK_REPLIES['final']
-        else:
-            return QUICK_REPLIES['initial']
+        # result_view 단계이거나 그 이후면 전환 가능
+        return stage in ['result_view', 'conversion', 'complete']
     
     def update_stage(self, new_stage: str):
         """
         대화 단계 업데이트
         
         Args:
-            new_stage: 새로운 단계 (initial/engaged/conversion/complete)
+            new_stage: 새로운 단계
+            - initial: 첫 인사
+            - symptom_select: 증상 선택 완료
+            - tongue_select: 혀 선택 완료
+            - result_view: 레이더 차트 표시
+            - conversion: 클로징 멘트
+            - complete: 견적서 제출 완료
         """
         st.session_state.user_context['stage'] = new_stage
     
@@ -220,7 +223,10 @@ class ConversationManager:
         """대화 초기화 (처음부터 다시)"""
         st.session_state.chat_history = []
         st.session_state.user_context = {
-            'user_type': None,
+            'user_type': '한의원',
+            'selected_symptom': None,
+            'selected_tongue': None,
+            'health_score': 0,
             'pain_point': None,
             'urgency': None,
             'budget_sense': None,
@@ -246,9 +252,9 @@ class ConversationManager:
 - **총 메시지**: {history_count}개
 - **인터랙션**: {st.session_state.interaction_count}회
 - **신뢰도**: {context['trust_level']}/100
-- **업종**: {context['user_type'] or '미파악'}
-- **페인포인트**: {context['pain_point'] or '미파악'}
-- **긴급도**: {context['urgency'] or '미파악'}
+- **선택 증상**: {context['selected_symptom'] or '미선택'}
+- **선택 혀**: {context['selected_tongue'] or '미선택'}
+- **건강 점수**: {context['health_score']}/100
 - **현재 단계**: {context['stage']}
 - **반박사항**: {', '.join(context['objections']) if context['objections'] else '없음'}
 """
