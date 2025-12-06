@@ -293,6 +293,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# 디버깅: 현재 단계 표시
+context = conv_manager.get_context()
+st.info(f"🔍 현재 단계: {context.get('stage')} | 선택된 혀: {context.get('selected_tongue')}")
+st.write(f"📊 대화 히스토리 개수: {len(conv_manager.get_history())}")
+st.markdown("---")
+
 # ============================================
 # 채팅 히스토리
 # ============================================
