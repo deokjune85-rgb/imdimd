@@ -66,7 +66,7 @@ footer {{
 
 .title-box h1 {{
     font-family: Arial, sans-serif !important;
-    font-size: 28px !important;
+    font-size: 30px !important;
     font-weight: 700 !important;
     color: {COLOR_PRIMARY} !important;
     margin: 0 !important;
@@ -75,7 +75,7 @@ footer {{
 }}
 
 .title-box .sub {{
-    font-size: 14px;
+    font-size: 16px;
     color: #4B5563;
     margin-top: 4px;
 }}
@@ -96,7 +96,7 @@ footer {{
     margin: 16px 0 8px 0 !important;
     max-width: 85% !important;
     display: block !important;
-    font-size: 18px !important;
+    font-size: 20px !important;
     line-height: 1.5 !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
     border: none !important;
@@ -117,7 +117,7 @@ footer {{
     margin: 8px 0 !important;
     max-width: 70% !important;
     display: inline-block !important;
-    font-size: 17px !important;
+    font-size: 19px !important;
     line-height: 1.4 !important;
     border: none !important;
     outline: none !important;
@@ -226,7 +226,7 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .title-box h1 {{
-        font-size: 24px !important;
+        font-size: 26px !important;
         line-height: 1.1 !important;
     }}
     
@@ -235,8 +235,26 @@ input::placeholder, textarea::placeholder {{
     }}
     
     .ai-msg {{
-        font-size: 16px !important;
+        font-size: 18px !important;
         padding: 11px 15px;
+    }}
+    
+    /* 모바일에서도 혀 사진 4개 가로 배열 강제 */
+    [data-testid="column"] {{
+        min-width: 0 !important;
+        flex: 1 1 25% !important;
+        padding: 0 4px !important;
+    }}
+    
+    [data-testid="column"] img {{
+        width: 100% !important;
+        height: auto !important;
+    }}
+    
+    [data-testid="column"] button {{
+        font-size: 11px !important;
+        padding: 6px 4px !important;
+        margin-top: 4px !important;
     }}
 }}
 
