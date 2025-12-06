@@ -541,7 +541,7 @@ if (
 
                     st.success("견적서 신청이 완료되었습니다!")
                     time.sleep(1)
-                    st.rerun()
+                    
                 else:
                     st.error(f"오류: {message}")
 
@@ -618,7 +618,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("ai", analysis_msg)
                 conv_manager.update_stage("conversion")
                 st.session_state.mode = "closing"
-                st.rerun()
+                
     
     with c2:
         # 황태설
@@ -673,7 +673,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("ai", analysis_msg)
                 conv_manager.update_stage("conversion")
                 st.session_state.mode = "closing"
-                st.rerun()
+                
     
     with c3:
         # 치흔설
@@ -730,7 +730,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("ai", analysis_msg)
                 conv_manager.update_stage("conversion")
                 st.session_state.mode = "closing"
-                st.rerun()
+                
     
     with c4:
         # 자색설
@@ -787,23 +787,12 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
                 conv_manager.add_message("ai", analysis_msg)
                 conv_manager.update_stage("conversion")
                 st.session_state.mode = "closing"
-                st.rerun()
+                
 
 # 일반 텍스트 입력
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
-# 입력이 있으면 session_state에 저장만 하고 rerun
-if user_input and not st.session_state.get('processing_input'):
-    st.session_state.pending_input = user_input
-    st.session_state.processing_input = True
-    st.rerun()
-
-# 저장된 입력 처리
-if st.session_state.get('processing_input') and st.session_state.get('pending_input'):
-    user_input = st.session_state.pending_input
-    st.session_state.pending_input = None
-    st.session_state.processing_input = False
-    
+if user_input:
     # 혀 타입 텍스트 자동 인식
     detected_tongue = None
     for tongue_key in ['담백설', '치흔설', '황태설', '자색설']:
@@ -851,8 +840,8 @@ if st.session_state.get('processing_input') and st.session_state.get('pending_in
         conv_manager.add_message("ai", analysis_msg)
         conv_manager.update_stage("conversion")
         st.session_state.mode = "closing"
-        st.rerun()
-        st.stop()
+        
+        
     
     # 일반 메시지 처리
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
@@ -958,7 +947,7 @@ if st.session_state.get('processing_input') and st.session_state.get('pending_in
 """
         conv_manager.add_message("ai", closing_msg)
         conv_manager.update_stage("conversion")
-        st.rerun()
+        
 
     # 3회 이상 대화되면 클로징 멘트 직접 투입 (기존 로직 유지)
     elif st.session_state.conversation_count >= 3 and st.session_state.mode == "simulation":
@@ -998,7 +987,7 @@ if st.session_state.get('processing_input') and st.session_state.get('pending_in
 """
         conv_manager.add_message("ai", closing_msg)
         conv_manager.update_stage("conversion")
-        st.rerun()
+        
 
     else:
         # 로딩 연출 (1초 대기)
@@ -1012,7 +1001,7 @@ if st.session_state.get('processing_input') and st.session_state.get('pending_in
         if "혀" in ai_response and current_stage in ["symptom_explore", "sleep_check", "digestion_check"]:
             conv_manager.update_stage("tongue_select")
         
-        st.rerun()
+        
 
 # ============================================
 # 8. 완료 후 액션
@@ -1026,7 +1015,7 @@ if conv_manager.get_context()["stage"] == "complete":
             st.session_state.mode = "simulation"
             st.session_state.conversation_count = 0
             st.session_state.app_initialized = False
-            st.rerun()
+            
 
     with col2:
         if st.button("상담 내역 보기", use_container_width=True):
