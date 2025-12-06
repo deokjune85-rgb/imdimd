@@ -581,7 +581,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
     st.markdown(
         "<div style='text-align:center; color:#1F2937; font-weight:600; font-size:18px; margin:20px 0;'>"
-        "📸 거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요"
+        "거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -604,7 +604,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             else:
                 st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
             
-            if st.button(f"👆 {info['visual']}", key="btn_담백설", use_container_width=True):
+            if st.button(f"{info['visual']}", key="btn_담백설", use_container_width=True):
                 st.session_state.tongue_selected = True
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
@@ -639,7 +639,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             else:
                 st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
             
-            if st.button(f"👆 {info['visual']}", key="btn_황태설", use_container_width=True):
+            if st.button(f"{info['visual']}", key="btn_황태설", use_container_width=True):
                 st.session_state.tongue_selected = True
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
@@ -674,7 +674,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             else:
                 st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
             
-            if st.button(f"👆 {info['visual']}", key="btn_치흔설", use_container_width=True):
+            if st.button(f"{info['visual']}", key="btn_치흔설", use_container_width=True):
                 st.session_state.tongue_selected = True
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
@@ -710,7 +710,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             else:
                 st.markdown(f"<div style='font-size:60px; text-align:center;'>{info['emoji']}</div>", unsafe_allow_html=True)
             
-            if st.button(f"👆 {info['visual']}", key="btn_자색설", use_container_width=True):
+            if st.button(f"{info['visual']}", key="btn_자색설", use_container_width=True):
                 st.session_state.tongue_selected = True
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
