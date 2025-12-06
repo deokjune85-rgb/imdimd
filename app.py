@@ -661,7 +661,8 @@ if (
 current_stage = conv_manager.get_context().get("stage", "symptom_explore")
 
 # 혀 선택 단계인 경우 → 버튼 UI 표시
-if current_stage == "tongue_select" and not st.session_state.get("tongue_selected"):
+if current_stage == "tongue_select":
+    # tongue_selected 조건 제거 - 항상 표시하여 DOM 안정화
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
     st.markdown(
         "<div style='text-align:center; color:#1F2937; font-weight:600; font-size:18px; margin:20px 0;'>"
