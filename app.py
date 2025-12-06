@@ -318,7 +318,9 @@ ctx = conv_manager.get_context()
 if not ctx.get("stage"):
     conv_manager.update_stage("initial")
 
-# B2B 모드 시작 메시지
+# ============================================
+# B2B 시작 메시지
+# ============================================
 if "app_initialized" not in st.session_state:
     initial_msg = """안녕하십니까, 원장님.
 
@@ -380,18 +382,95 @@ with st.container():
     chat_html += "</div>"
     st.markdown(chat_html, unsafe_allow_html=True)
 
+
 # ============================================
-# 혀 사진 선택 UI (tongue_select 단계에서만)
+# 노이즈(개소리) 판별 함수
+# → 이런 건 단계 진행에서 제외
+# ============================================
+def is_noise_utterance(text: str) -> bool:
+    if not text:
+        return True
+
+    t = text.strip()
+    if not t:
+        return True
+
+    # 아주 짧은 추임새 류
+    if len(t) <= 2 and t in ["ㅎ", "ㅋㅋ", "ㅎㅎ", "ㅇㅋ", "ok", "굿"]:
+        return True
+
+    # 욕 리스트
+    bad_words = [
+        "씨발",
+        "ㅅㅂ",
+        "개새끼",
+        "개같네",
+        "개좆",
+        "개좃",
+        "좆같",
+        "병신",
+        "개같은",
+        "개좆같은소리",
+        "개좃같은소리",
+    ]
+
+    # 건강/증상 관련 키워드 (있으면 유효 발화로 취급)
+    health_keywords = [
+        "허리",
+        "목",
+        "어깨",
+        "똥구멍",
+        "항문",
+        "배",
+        "속",
+        "두통",
+        "어지럽",
+        "불면",
+        "잠",
+        "피곤",
+        "통증",
+        "소화",
+        "다리",
+        "발",
+        "발톱",
+        "내성발톱",
+        "골반",
+        "무릎",
+        "가슴",
+        "심장",
+        "두근",
+    ]
+
+    has_bad = any(b in t for b in bad_words)
+    has_health = any(h in t for h in health_keywords)
+
+    # 욕만 있고 증상 키워드는 없으면 노이즈
+    if has_bad and not has_health:
+        return True
+
+    # 그 외는 유효 발화
+    return False
+
+
+# ============================================
+# 혀 사진 선택 UI
+#  - stage 안 믿고, 마지막 AI 멘트에 "혀" + "선택/사진/거울" 있으면 표시
 # ============================================
 context = conv_manager.get_context()
 chat_history = conv_manager.get_history()
 
+last_ai_text = (
+    chat_history[-1]["text"]
+    if chat_history and chat_history[-1]["role"] == "ai"
+    else ""
+)
+
 show_tongue_ui = (
-    context.get("stage") == "tongue_select"
-    and not context.get("selected_tongue")
+    not context.get("selected_tongue")
     and chat_history
     and chat_history[-1]["role"] == "ai"
-    and ("거울" in chat_history[-1]["text"] or "혀" in chat_history[-1]["text"])
+    and ("혀" in last_ai_text)
+    and ("선택" in last_ai_text or "사진" in last_ai_text or "거울" in last_ai_text)
 )
 
 if show_tongue_ui:
@@ -457,8 +536,9 @@ if show_tongue_ui:
 
         st.markdown("<div style='height:150px;'></div>", unsafe_allow_html=True)
 
+
 # ============================================
-# 자동 CTA (conversion 단계)
+# CTA (conversion 단계)
 # ============================================
 current_stage = conv_manager.get_context().get("stage")
 selected_tongue = conv_manager.get_context().get("selected_tongue")
@@ -523,7 +603,7 @@ if current_stage == "conversion" and selected_tongue and current_stage != "compl
 - 지역 독점권 계약 조건
 - ROI 예상 시뮬레이션
 
-담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
+담당 컨설턴트가 직접 연락드리겠습니다.
 """
                         conv_manager.add_message("ai", completion_msg)
                         conv_manager.update_stage("complete")
@@ -534,8 +614,10 @@ if current_stage == "conversion" and selected_tongue and current_stage != "compl
                     else:
                         st.error(f"오류: {message}")
 
+
 # ============================================
-# 입력창: 여기서부터가 핵심 — 매핑 싹 제거, LLM만 사용
+# 입력창 + LLM 호출
+#  - 여기서 노이즈면 stage 그대로 유지
 # ============================================
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
@@ -549,13 +631,14 @@ if user_input:
     st.session_state.conversation_count += 1
 
     context = conv_manager.get_context()
+    current_stage = context.get("stage", "initial")
     history_for_llm = conv_manager.get_formatted_history(for_llm=True)
 
-    # LLM에게 모든 말을 맡긴다 (단계 제어는 prompt_engine 안에서)
+    # LLM 호출
     raw_output = generate_ai_response(user_input, context, history_for_llm)
 
     # [[STAGE:...]] 태그 파싱
-    next_stage = context.get("stage", "initial")
+    next_stage = current_stage
     ai_text = raw_output
 
     if "[[STAGE:" in raw_output:
@@ -564,6 +647,10 @@ if user_input:
         stage_tag = tail.split("]]", 1)[0].strip()
         if stage_tag:
             next_stage = stage_tag
+
+    # 🔴 욕/개소리면: 단계 진행 막고, 현재 stage 유지
+    if is_noise_utterance(user_input):
+        next_stage = current_stage
 
     conv_manager.add_message("ai", ai_text)
     conv_manager.update_stage(next_stage)
