@@ -558,11 +558,79 @@ if user_input:
     context = conv_manager.get_context()
     current_stage = context.get('stage', 'initial')
     history = conv_manager.get_formatted_history(for_llm=True)
+    user_lower = user_input.lower()
     
-    # 단계별 강제 응답 (AI 무시하고 직접 제어)
+    # ========================================
+    # 증상별 분기 처리 (initial 단계에서만)
+    # ========================================
     if current_stage == 'initial':
-        # 첫 증상 → 시간대 질문
-        ai_response = """피곤하시군요. 많은 분들이 비슷한 증상을 호소하십니다.
+        # 1) 다리 쥐 / 저림 / 통증
+        if any(word in user_lower for word in ['쥐', '저리', '다리', '통증', '아프', '결림']):
+            ai_response = """다리에 쥐가 나신다니, 불편하시겠습니다.
+
+혈액 순환이나 근육의 영양 공급에 문제가 있을 수 있습니다.
+
+**구체적으로 여쭤보겠습니다:**
+- 주로 언제 쥐가 나나요? (자다가? 운동 중?)
+- 어느 부위인가요? (종아리? 허벅지?)
+- 손발이 차갑거나 저린 증상도 있으신가요?"""
+            conv_manager.add_message("ai", ai_response)
+            conv_manager.update_stage('symptom_explore')
+            st.rerun()
+            
+        # 2) 다이어트 / 살 / 체중
+        elif any(word in user_lower for word in ['다이어트', '살', '체중', '뚱뚱', '비만', '빠지', '감량']):
+            ai_response = """체중 관리에 관심이 있으시군요.
+
+한의학에서는 단순히 칼로리만이 아니라, **몸의 대사 기능**을 중요하게 봅니다.
+
+**몇 가지 여쭤보겠습니다:**
+- 식사량은 많지 않은데도 살이 찌시나요?
+- 붓기가 심한 편인가요?
+- 소화는 잘 되시나요?"""
+            conv_manager.add_message("ai", ai_response)
+            conv_manager.update_stage('symptom_explore')
+            st.rerun()
+            
+        # 3) 불면 / 수면 / 잠
+        elif any(word in user_lower for word in ['잠', '수면', '불면', '못자', '새벽', '깨']):
+            ai_response = """수면에 문제가 있으시군요. 잠은 건강의 기본입니다.
+
+**좀 더 구체적으로 여쭤보겠습니다:**
+- 잠들기가 어려우신가요? 아니면 자다가 자주 깨시나요?
+- 새벽 몇 시쯤 깨시나요?
+- 머리가 복잡하거나 가슴이 두근거리시나요?"""
+            conv_manager.add_message("ai", ai_response)
+            conv_manager.update_stage('symptom_explore')
+            st.rerun()
+            
+        # 4) 소화 / 속 / 더부룩
+        elif any(word in user_lower for word in ['소화', '속', '더부룩', '체', '명치', '배', '복통']):
+            ai_response = """소화가 불편하시군요. 비위(소화기) 기능을 점검해봐야 할 것 같습니다.
+
+**증상을 좀 더 구체적으로 알려주세요:**
+- 언제 더 불편하신가요? (식후? 공복?)
+- 트림이나 명치 답답함이 있으신가요?
+- 대변은 규칙적인가요?"""
+            conv_manager.add_message("ai", ai_response)
+            conv_manager.update_stage('symptom_explore')
+            st.rerun()
+            
+        # 5) 두통 / 어지럼
+        elif any(word in user_lower for word in ['두통', '머리', '어지럼', '현기증']):
+            ai_response = """두통이나 어지럼증은 일상생활에 큰 지장을 주죠.
+
+**패턴을 파악해보겠습니다:**
+- 어떤 두통인가요? (지끈지끈? 띠 두른 듯? 욱신욱신?)
+- 주로 언제 심해지나요?
+- 메스꺼움이나 구토도 동반되나요?"""
+            conv_manager.add_message("ai", ai_response)
+            conv_manager.update_stage('symptom_explore')
+            st.rerun()
+            
+        # 6) 피로 (기본 루트)
+        else:
+            ai_response = """피곤하시군요. 많은 분들이 비슷한 증상을 호소하십니다.
 
 좀 더 정확히 파악하기 위해 여쭤보겠습니다.
 
@@ -570,9 +638,9 @@ if user_input:
 - 아침에 눈뜰 때?
 - 오후 시간대?
 - 하루종일 계속?"""
-        conv_manager.add_message("ai", ai_response)
-        conv_manager.update_stage('symptom_explore')
-        st.rerun()
+            conv_manager.add_message("ai", ai_response)
+            conv_manager.update_stage('symptom_explore')
+            st.rerun()
         
     elif current_stage == 'symptom_explore':
         # 시간대 답변 → 수면 질문
