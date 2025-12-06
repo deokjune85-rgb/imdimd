@@ -248,6 +248,9 @@ def _call_llm(
     """
     Gemini 호출.
     - 라이브러리/키/모델 문제면 디버그 텍스트를 그대로 반환 (멈추지 않게).
+
+    ※ 중요: Gemini 2.0은 role='system' 메시지를 contents에 넣지 않는다.
+      system_instruction 인자로만 넘긴다.
     """
     # 0) 라이브러리/키/모델 체크
     if genai is None:
@@ -282,10 +285,10 @@ def _call_llm(
         )
         return msg + "\n[[STAGE:initial]]"
 
-    # 1) 메시지 구성
-    msgs: List[Dict[str, Any]] = [{"role": "system", "parts": [system_instruction]}]
+    # 1) contents 구성 (system role 절대 넣지 않음)
+    contents: List[Dict[str, Any]] = []
 
-    # --- 여기서 history를 방어적으로 처리 (dict / str 둘 다 대응) ---
+    # history: conv_manager.get_formatted_history(for_llm=True) 결과
     for msg in history:
         if isinstance(msg, dict):
             role_raw = msg.get("role", "ai")
@@ -299,15 +302,19 @@ def _call_llm(
         if not text:
             continue
 
-        g_role = "user" if role_raw == "user" else "assistant"
-        msgs.append({"role": g_role, "parts": [text]})
+        # Gemini 쪽 role: "user" 또는 "model"
+        g_role = "user" if role_raw == "user" else "model"
+        contents.append({"role": g_role, "parts": [text]})
 
     # 마지막 유저 발화
-    msgs.append({"role": "user", "parts": [user_input]})
+    contents.append({"role": "user", "parts": [user_input]})
 
     # 2) LLM 호출
     try:
-        res = _model.generate_content(msgs)
+        res = _model.generate_content(
+            contents=contents,
+            system_instruction=system_instruction,
+        )
         text = (res.text or "").strip()
 
         if not text:
