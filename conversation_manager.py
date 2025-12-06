@@ -211,9 +211,12 @@ class ConversationManager:
         Args:
             new_stage: 새로운 단계
             - initial: 첫 인사
-            - symptom_select: 증상 선택 완료
-            - tongue_select: 혀 선택 완료
-            - result_view: 레이더 차트 표시
+            - symptom_explore: 증상 탐색
+            - sleep_check: 수면 확인
+            - digestion_check: 소화 확인
+            - tongue_select: 혀 선택
+            - diagnosis: 진단 설명
+            - solution: 솔루션 제안
             - conversion: 클로징 멘트
             - complete: 견적서 제출 완료
         """
