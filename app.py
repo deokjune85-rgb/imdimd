@@ -463,17 +463,8 @@ for idx, msg in enumerate(conv_manager.get_history()):
             if prev_msg.get("role") == "user" and "[선택:" in prev_msg.get("text", ""):
                 tongue_type = st.session_state.selected_tongue_type
                 if tongue_type in TONGUE_TYPES:
-                    info = TONGUE_TYPES[tongue_type]
-                    image_path = info.get('image', '')
-                    if image_path:
-                        # HTML로 넣지 말고 st.image로 출력
-                        st.markdown(
-                            f"<div style='text-align:center; margin: 20px 0;'>"
-                            f"<div style='font-size: 16px; color: #059669; font-weight: 700; margin-bottom: 10px;'>✅ 선택하신 혀: {info['name']}</div>"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-                        st.image(image_path, use_container_width=True)
+                    # 사진 표시 제거 - 선택만 처리
+                    pass
     
     elif msg["role"] == "user":
         # 환자(원장) 메시지 - 흰색 카드 (개별 출력)
@@ -496,34 +487,46 @@ for idx, msg in enumerate(conv_manager.get_history()):
     <div class="log-msg">
         <b>[분석] 기상 직후 피로 호소</b><br>
         → 단순 과로 아님. 수면의 질 저하 또는 <span class="log-highlight">'기허(氣虛)'</span> 의심<br>
-        → 다음 단계: 소화기능 및 수면패턴 추적 필요
+        → 다음 단계: 시간대 특정하여 기허와 단순 피로 구별
     </div>
 </div>
 """, unsafe_allow_html=True)
         
-        # 두 번째 메시지: 변증 심화
+        # 두 번째 메시지: 수면 확인
         elif idx == 3 and st.session_state.conversation_count >= 2:
             st.markdown("""
 <div class="admin-log">
-    <span class="log-header">📊 DEEP ANALYSIS</span>
+    <span class="log-header">📊 STEP 2</span>
     <div class="log-msg">
-        <b>[Logic] 식곤증 + 만성피로</b><br>
-        = <span class="log-highlight">비위(소화기) 기능 저하</span>로 인한 기혈 생성 실패<br>
-        <b>[진단명]</b> 비기허(脾氣虛) 및 습담(濕痰) 정체 유력<br>
-        → 설진(혀 진단)으로 확증 필요
+        <b>[Logic] 아침 피로 확인 완료</b><br>
+        → 수면 회복력 저하 = <span class="log-highlight">기허(氣虛) 가능성 80%</span><br>
+        → 다음 단계: 소화기능 확인하여 비기허(脾氣虛) 판별
     </div>
 </div>
 """, unsafe_allow_html=True)
         
-        # 세 번째 메시지: 클로징 준비
-        elif idx >= 5 and st.session_state.conversation_count >= 3:
+        # 세 번째 메시지: 소화 확인
+        elif idx == 5 and st.session_state.conversation_count >= 3:
+            st.markdown("""
+<div class="admin-log">
+    <span class="log-header">📊 STEP 3</span>
+    <div class="log-msg">
+        <b>[진단 확정] 식곤증 + 만성피로</b><br>
+        = <span class="log-highlight">비기허(脾氣虛) + 습담(濕痰) 정체</span> 확정<br>
+        → 설진(혀 진단)으로 시각적 증거 확보 단계
+    </div>
+</div>
+""", unsafe_allow_html=True)
+        
+        # 네 번째 메시지: 혀 선택 후 클로징
+        elif idx >= 7 and st.session_state.conversation_count >= 4:
             st.markdown("""
 <div class="admin-log" style="border: 2px solid #059669;">
     <span class="log-header" style="color:#059669;">💡 SALES OPPORTUNITY</span>
     <div class="log-msg">
-        <b>[전략] 단순 침 치료(1만원) 불가 판정</b><br>
-        → 고가 패키지(공진단/녹용) 제안 명분 확보<br><br>
-        <span class="log-highlight">환자는 자신의 몸이 심각함을 인지했습니다.</span><br>
+        <b>[전략] 3단계 문진 + 설진 완료</b><br>
+        → 환자가 스스로 몸 상태 심각성 인지<br><br>
+        <span class="log-highlight">고가 패키지(공진단/녹용) 제안 타이밍 도달</span><br>
         이 타이밍에 <b>'집중 면역 프로그램'</b> 제안 시<br>
         동의율 <b>80% 이상</b>으로 상승
     </div>
@@ -920,6 +923,58 @@ if user_input:
 
     context = conv_manager.get_context()
     history = conv_manager.get_formatted_history(for_llm=True)
+    
+    # ===== 수동 응답: 단계별 분석 =====
+    
+    # 1단계: 첫 증상 입력 → 수면 질문
+    if st.session_state.conversation_count == 1:
+        response_msg = """
+원장님, 환자가 피로를 호소하고 있습니다.
+
+<b>질문 1단계: 시간대 특정</b>
+
+"언제 제일 힘드세요? 아침에 눈뜰 때인가요, 아니면 오후 3시쯤인가요?"
+"""
+        conv_manager.add_message("ai", response_msg)
+        conv_manager.update_stage("sleep_check")
+        st.rerun()
+        st.stop()
+    
+    # 2단계: 수면 답변 → 소화 질문
+    elif st.session_state.conversation_count == 2:
+        response_msg = """
+역시 그렇군요. 아침부터 피곤하다는 건 단순 과로가 아닙니다.
+
+<b>질문 2단계: 소화기능 확인</b>
+
+"주무시고 나서도 힘드시다면, 몸의 에너지 충전 기능 자체에 문제가 있습니다.
+혹시 식사 후에 유독 졸리거나 속이 더부룩하진 않으신가요?"
+"""
+        conv_manager.add_message("ai", response_msg)
+        conv_manager.update_stage("digestion_check")
+        st.rerun()
+        st.stop()
+    
+    # 3단계: 소화 답변 → 혀 선택
+    elif st.session_state.conversation_count == 3:
+        response_msg = """
+<b>분석 완료</b>
+
+환자분의 증상을 정리하면:
+- ✓ 아침 기상 시 피로 (수면 회복력 저하)
+- ✓ 식후 졸음/더부룩함 (비위 기능 저하)
+
+이는 <b>비기허(脾氣虛) + 습담(濕痰) 정체</b>의 전형적 패턴입니다.
+
+<b>마지막 단계: 시각적 증거 확보</b>
+
+이제 혀 상태를 확인하여, 환자가 스스로 "내 몸이 망가졌구나"를 깨닫게 만들겠습니다.
+거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요.
+"""
+        conv_manager.add_message("ai", response_msg)
+        conv_manager.update_stage("tongue_select")
+        st.rerun()
+        st.stop()
     
     # solution 단계에서 "네" 또는 긍정 답변 시 자동 클로징
     if context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
