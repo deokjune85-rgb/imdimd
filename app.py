@@ -113,7 +113,13 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    margin-bottom: 100px;
+    margin-bottom: 200px !important;  /* 하단 여백 증가 */
+}}
+
+/* 모바일에서도 columns를 가로로 유지 */
+[data-testid="column"] {{
+    min-width: 0 !important;
+    flex: 1 !important;
 }}
 
 /* AI 메시지 버블 */
@@ -343,10 +349,27 @@ input::placeholder, textarea::placeholder {{
     color: white;
 }}
 
+/* 혀 선택 버튼 - 모바일에서 작게 */
+@media (max-width: 768px) {{
+    .stButton > button {{
+        font-size: 11px !important;
+        padding: 8px 4px !important;
+        line-height: 1.2 !important;
+    }}
+}}
+
 /* 모바일 */
 @media (max-width: 768px) {{
     .main .block-container {{
         padding-top: 0 !important;
+    }}
+    
+    /* 모바일에서도 4개 columns 가로 유지 */
+    [data-testid="column"] {{
+        min-width: 0 !important;
+        width: 25% !important;
+        flex: 0 0 25% !important;
+        max-width: 25% !important;
     }}
     
     .title-box {{
@@ -360,6 +383,7 @@ input::placeholder, textarea::placeholder {{
     
     .chat-area {{
         padding: 2px 16px 4px 16px !important;
+        margin-bottom: 250px !important;  /* 모바일 하단 여백 더 증가 */
     }}
     
     .ai-msg {{
