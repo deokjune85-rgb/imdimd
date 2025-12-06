@@ -1,22 +1,15 @@
 """
 prompt_engine.py
-한의원 AI 실장 데모용 프롬프트 엔진 (GEMINI_API_KEY + Gemini 2.0 Flash)
+한의원 AI 실장 데모용 프롬프트 엔진 (Gemini 1.5/2.0 공통)
 
 역할:
 - app.py에서 넘겨준 context['stage']에 따라
   어떤 톤/내용으로 말할지 LLM에게 지시한다.
-- 제미나이가 정상 동작할 때는 LLM 사용.
-- 제미나이가 429/오류 나면 자동으로 "룰 기반 오프라인 모드"로 떨어져서
+- Gemini가 죽거나(429, 키 문제 등) 이상 동작하면
+  자동으로 "룰 기반 오프라인 모드"로 떨어져서
   원장님 눈에는 끊기지 않는 상담처럼 보이게 한다.
-
-허용 단계:
-- initial
-- symptom_explore
-- sleep_check
-- digestion_check
-- tongue_select
-- conversion
-- complete
+- 사용자가 이미 "괜찮아, 잘 자" 같은 답을 여러 번 했으면
+  수면 질문 반복을 끊고 바로 소화 단계(digestion_check)로 넘긴다.
 """
 
 from typing import Any, Dict, List
@@ -30,9 +23,9 @@ except ImportError:
     genai = None
 
 # -----------------------------
-# 전역 상태
+# 전역 설정
 # -----------------------------
-MODEL_NAME: str = "gemini-2.0-flash"
+MODEL_NAME: str = "gemini-1.5-flash"  # 2.0 쓰고 싶으면 여기만 교체
 
 _api_key_source: str = "none"
 _init_error: str = ""
@@ -65,11 +58,12 @@ def _load_api_key() -> str:
     return ""
 
 
+_api_key = _load_api_key()
+
+
 # -----------------------------
 # 모델 초기화
 # -----------------------------
-_api_key = _load_api_key()
-
 if genai is not None and _api_key:
     try:
         genai.configure(api_key=_api_key)
@@ -95,9 +89,61 @@ def get_prompt_engine() -> Dict[str, Any]:
 
 
 # -----------------------------
-# (참고용) 스테이지별 시스템 설명 텍스트
-#  - 지금은 LLM prompt에도 쓰고,
-#  - 오프라인 모드에서는 참고용 설명 역할만 한다.
+# 유틸: 노이즈/욕설 판정
+# -----------------------------
+def _is_noise_input(text: str) -> bool:
+    """욕/개소리/빈문자 같은 거면 True."""
+    if not text or not text.strip():
+        return True
+
+    lower = text.lower()
+    bad_words = ["씨발", "좆", "병신", "개새", "썅", "병맛", "개같", "지랄"]
+    return any(b in lower for b in bad_words)
+
+
+# -----------------------------
+# 유틸: "수면 괜찮음" 판정
+# -----------------------------
+def _is_sleep_ok_answer(text: str) -> bool:
+    """'괜찮아 잘 자요' 이런 류면 수면 문제 없음으로 간주."""
+    if not text:
+        return False
+    t = text.replace(" ", "").lower()
+    keys = [
+        "괜찮아",
+        "괜찮아요",
+        "괜찮습니다",
+        "괜찮다",
+        "잘자",
+        "잘자요",
+        "잠괜찮",
+        "잠잘와",
+        "문제없어",
+        "문제없어요",
+        "숙면",
+    ]
+    return any(k in t for k in keys)
+
+
+# -----------------------------
+# 유틸: 히스토리에서 특정 STAGE 등장 횟수 세기
+# -----------------------------
+def _count_stage_in_history(history: List[Dict[str, Any]], stage: str) -> int:
+    cnt = 0
+    marker = f"[[STAGE:{stage}]]"
+    for msg in history:
+        text = ""
+        if isinstance(msg, dict):
+            text = (msg.get("text") or msg.get("content") or "").strip()
+        elif isinstance(msg, str):
+            text = msg.strip()
+        if marker in text:
+            cnt += 1
+    return cnt
+
+
+# -----------------------------
+# 스테이지별 시스템 설명 텍스트
 # -----------------------------
 def _build_system_instruction(stage: str) -> str:
     base = """
@@ -112,7 +158,7 @@ def _build_system_instruction(stage: str) -> str:
 - "환자의 감정 공감" → "현재 단계에 맞는 질문" 흐름을 지키세요.
 - 욕설, 장난, 의미 없는 입력도 나올 수 있습니다. 그런 경우에도 침착하게 대응하세요.
 
-단계 전환 규칙(매우 중요):
+단계 전환 규칙:
 - 단계 이름: initial, symptom_explore, sleep_check, digestion_check, tongue_select, conversion, complete
 - 당신은 각 답변의 마지막 줄에 반드시 [[STAGE:...]] 형식의 태그를 넣어야 합니다.
 - 사용자가 욕설/장난/의학과 무관한 말을 했다고 판단되면,
@@ -143,6 +189,9 @@ def _build_system_instruction(stage: str) -> str:
 
 목표:
 - 수면의 길이, 질, 패턴(잠들기/깨기/깼을 때 컨디션)을 파악합니다.
+- 단, 원장님이 '괜찮다, 잘 잔다'고 명확히 말하거나,
+  이 단계에서 이미 두 번 이상 대화를 주고받았다면
+  수면 질문을 더 반복하지 말고 다음 단계(소화)로 넘어가야 합니다.
 """
     elif stage == "digestion_check":
         specific = """
@@ -185,39 +234,39 @@ def _build_system_instruction(stage: str) -> str:
 
 # -----------------------------
 # 오프라인(백업) 응답 생성기
-#  - 제미나이 429/에러일 때 여기로 떨어진다.
-#  - 최대한 "AI처럼" 보이게, 그러나 룰 기반으로 처리.
 # -----------------------------
 def _offline_fallback(
     user_input: str,
     current_stage: str,
 ) -> str:
-    text = user_input.strip().lower()
+    """
+    Gemini 안 되면 여기로 떨어짐.
+    """
+    text = user_input.strip()
 
-    # 욕/비속어 섞여도 단계는 유지 (그냥 감정만 받아주기)
-    bad_words = ["씨발", "좆", "병신", "개새", "썅", "병맛"]
-    is_noise = (not user_input.strip()) or any(b in user_input for b in bad_words)
+    # 욕/노이즈 처리: 단계 유지 + 감정만 받아주기
+    if _is_noise_input(text):
+        body = (
+            "원장님, 말씀 속에서 요즘 얼마나 답답하신지 느낌이 전해집니다.\n"
+            "괜찮으시다면, 어느 부위가 언제 특히 더 힘든지 한 가지만 더 구체적으로 말씀해 주시겠어요?\n"
+            "그래야 제가 환자 입장에서 어떻게 공감하고, 어떤 흐름으로 안내하는지 보여드릴 수 있습니다."
+        )
+        return f"{body}\n\n[[STAGE:{current_stage}]]"
 
-    # ===== initial 단계 =====
+    # 수면 괜찮다는 답변이면 → 강제로 소화 단계로 전환
+    if current_stage in ("symptom_explore", "sleep_check") and _is_sleep_ok_answer(text):
+        return _sleep_ok_to_digestion_response()
+
     if current_stage == "initial":
-        if is_noise:
-            body = (
-                "원장님, 거친 표현이 나올 만큼 요즘 많이 지치고 답답하신 것 같네요.\n"
-                "이럴수록 정확하게 어디가, 언제, 어떻게 힘든지 짚어보는 게 중요합니다.\n"
-                "어떤 증상이 가장 신경 쓰이시는지 한 가지만 편하게 말씀해 주시겠어요?\n"
-                "예를 들면, 허리통증, 두통, 소화불량, 만성피로 같은 것들입니다."
-            )
-        else:
-            body = (
-                "말씀만 들어도 요즘 몸과 마음이 모두 많이 지치신 게 느껴집니다, 원장님.\n"
-                "정확히 짚어보려면 먼저 **어디가, 언제 가장 힘든지**부터 보는 게 좋습니다.\n"
-                "지금 가장 신경 쓰이는 증상이 어떤 건지, 그리고 그 증상이 언제 특히 심해지는지\n"
-                "예를 들어 '배변할 때 찢어지는 느낌', '오후만 되면 머리가 멍함' 같은 식으로\n"
-                "조금만 더 구체적으로 말씀해 주실 수 있을까요?"
-            )
+        body = (
+            "말씀만 들어도 요즘 몸과 마음이 모두 많이 지치신 게 느껴집니다, 원장님.\n"
+            "정확히 짚어보려면 먼저 **어디가, 언제 가장 힘든지**부터 보는 게 좋습니다.\n"
+            "지금 가장 신경 쓰이는 증상이 어떤 건지, 그리고 그 증상이 언제 특히 심해지는지\n"
+            "예를 들어 '배변할 때 찢어지는 느낌', '오후만 되면 머리가 멍함' 같은 식으로\n"
+            "조금만 더 구체적으로 말씀해 주실 수 있을까요?"
+        )
         next_stage = "symptom_explore"
 
-    # ===== symptom_explore 단계 =====
     elif current_stage == "symptom_explore":
         body = (
             "말씀해 주신 내용을 보면, 단순히 하루 이틀 무리해서 생긴 증상이라기보다는\n"
@@ -229,19 +278,11 @@ def _offline_fallback(
         )
         next_stage = "sleep_check"
 
-    # ===== sleep_check 단계 =====
     elif current_stage == "sleep_check":
-        body = (
-            "수면 패턴 이야기를 들어보면, 단순 과로나 나이 탓으로만 보기에는 아까운 부분이 많습니다.\n"
-            "잠을 자도 회복이 안 되는 상태라면, 결국 **에너지를 만들어내는 공장**,\n"
-            "즉 비위(소화기) 쪽 상태를 함께 봐야 합니다.\n\n"
-            "이제는 소화 쪽을 체크해 보겠습니다.\n"
-            "- 식사 후에 속이 더부룩하거나 답답한 느낌이 자주 있으신가요?\n"
-            "- 대변은 규칙적인 편인지도 함께 알려주시면 좋겠습니다."
-        )
-        next_stage = "digestion_check"
+        # 여기까지 왔다는 건, 수면 ok라고 명시하진 않았지만
+        # 더 묻지 말고 소화 단계로 넘기는 게 낫다고 판단
+        return _sleep_ok_to_digestion_response()
 
-    # ===== digestion_check 단계 =====
     elif current_stage == "digestion_check":
         body = (
             "지금까지 말씀해 주신 패턴을 보면, 몸이 '에너지를 생산하고 정리하는 과정'에서\n"
@@ -250,12 +291,8 @@ def _offline_fallback(
             "원장님, 거울을 보시고 본인의 혀를 한 번 살펴봐 주세요.\n"
             "화면에 보이는 4가지 혀 사진 중에서, 본인 혀와 가장 비슷한 이미지를 선택해 주시면 됩니다."
         )
-        # 혀 UI는 app.py에서 stage == 'digestion_check' 이고
-        # 마지막 AI 발화에 '혀/거울'이 들어가면 뜨도록 만들어져 있으니,
-        # 여기서 단계는 그대로 유지한다.
-        next_stage = "digestion_check"
+        next_stage = "digestion_check"  # 혀 UI는 app.py에서 이 멘트 보고 띄움
 
-    # ===== tongue_select 이후 (진단/전환 단계는 제미나이 없으면 심플하게) =====
     elif current_stage == "tongue_select":
         body = (
             "원장님이 선택해 주신 혀 상태만 보더라도,\n"
@@ -293,10 +330,25 @@ def _offline_fallback(
     return f"{body}\n\n[[STAGE:{next_stage}]]"
 
 
+def _sleep_ok_to_digestion_response() -> str:
+    """
+    수면 괜찮다는 답변이 나왔을 때,
+    수면 질문 반복하지 않고 바로 소화 단계로 넘길 때 쓰는 멘트.
+    """
+    body = (
+        "원장님 말씀을 들어보면, 수면 자체는 크게 문제 없는 편으로 보입니다 혹은\n"
+        "현재로서는 더 깊이 파고들기보다는 다음 단계로 넘어가는 것이 좋겠습니다.\n\n"
+        "그렇다면 지금 느끼시는 불편감은, 잠의 양이나 질보다는\n"
+        "몸이 에너지를 만들어내고 순환시키는 과정에서 막히는 부분이 있는지 확인해 보는 게 좋겠습니다.\n\n"
+        "이번에는 **소화와 배변 쪽**을 한번 체크해 보겠습니다.\n"
+        "- 식사 후에 속이 더부룩하거나 답답한 느낌이 자주 있으신가요?\n"
+        "- 대변은 규칙적인 편인지, 아니면 변비·설사가 번갈아 오는 편인지도 함께 알려주시면 좋겠습니다."
+    )
+    return f"{body}\n\n[[STAGE:digestion_check]]"
+
+
 # -----------------------------
 # LLM 호출 유틸
-#  - 제미나이가 정상일 때만 사용
-#  - 오류/429 나면 _offline_fallback 으로 즉시 전환
 # -----------------------------
 def _call_llm(
     system_instruction: str,
@@ -304,7 +356,7 @@ def _call_llm(
     user_input: str,
     current_stage: str,
 ) -> str:
-    # 0) 라이브러리/키/모델 체크 → 안 되면 바로 오프라인 모드
+    # 라이브러리/키/모델 체크 → 안 되면 바로 오프라인 모드
     if genai is None or not _api_key or _model is None:
         return _offline_fallback(user_input, current_stage)
 
@@ -345,7 +397,6 @@ def _call_llm(
 반드시 마지막 줄은 [[STAGE:단계이름]] 형식으로 끝내세요.
 """
 
-    # 2) 실제 LLM 호출
     try:
         res = _model.generate_content(combined_prompt)
         text = (getattr(res, "text", None) or "").strip()
@@ -359,8 +410,7 @@ def _call_llm(
         return text
 
     except Exception:
-        # 여기서 429 / 기타 모든 오류는 다 잡혀서
-        # 바로 오프라인 상담 텍스트로 대체된다.
+        # 429/기타 모든 오류 → 바로 오프라인 플로우
         return _offline_fallback(user_input, current_stage)
 
 
@@ -378,8 +428,27 @@ def generate_ai_response(
     - context['stage']를 읽어서 system prompt를 만든다.
     - LLM을 호출해서 답변 텍스트를 받는다.
     - LLM이 죽으면(_call_llm 내부) 오프라인 백업 답변으로 자동 전환된다.
+    - '괜찮아 잘 자' 같은 답변이면 LLM 안 부르고 바로 소화 단계로 넘어간다.
+    - sleep_check 단계에서 이미 2번 이상 답했다면, 더 안 묻고 소화로 넘긴다.
     """
     current_stage = context.get("stage", "initial")
+
+    # 1) 욕/개소리만 한 경우 → 바로 오프라인 처리 (단계 유지)
+    if _is_noise_input(user_input):
+        return _offline_fallback(user_input, current_stage)
+
+    # 2) 수면 관련 단계에서 "괜찮아/잘 자" 류 → 소화 단계로 강제 전환
+    if current_stage in ("symptom_explore", "sleep_check") and _is_sleep_ok_answer(user_input):
+        return _sleep_ok_to_digestion_response()
+
+    # 3) sleep_check 단계에서 대화가 너무 길어졌으면 → 더 안 묻고 소화로 전환
+    if current_stage == "sleep_check":
+        sleep_turns = _count_stage_in_history(history_for_llm, "sleep_check")
+        # 이미 sleep_check 스테이지로 2번 이상 답변을 줬다면, 더 묻지 말고 넘어간다
+        if sleep_turns >= 2:
+            return _sleep_ok_to_digestion_response()
+
+    # 4) 그 외 → LLM + 오프라인 백업
     system_instruction = _build_system_instruction(current_stage)
     llm_text = _call_llm(system_instruction, history_for_llm, user_input, current_stage)
     return llm_text
