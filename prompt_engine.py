@@ -34,23 +34,24 @@ _init_error: str = ""
 def _load_api_key() -> str:
     global _api_key_source
 
-    # 1) Streamlit secrets
+    # 1) Streamlit secrets - 너가 실제로 쓰는 이름
     try:
-        key = st.secrets["GOOGLE_API_KEY"]
+        key = st.secrets["GEMINI_API_KEY"]
         if key:
-            _api_key_source = "st.secrets['GOOGLE_API_KEY']"
+            _api_key_source = "st.secrets['GEMINI_API_KEY']"
             return key
     except Exception:
         pass
 
-    # 2) 환경 변수
-    key = os.getenv("GOOGLE_API_KEY")
+    # 2) 혹시 나중에 환경변수로도 쓰고 싶으면
+    key = os.getenv("GEMINI_API_KEY")
     if key:
-        _api_key_source = "os.environ['GOOGLE_API_KEY']"
+        _api_key_source = "os.environ['GEMINI_API_KEY']"
         return key
 
     _api_key_source = "none"
     return ""
+
 
 
 # -----------------------------
