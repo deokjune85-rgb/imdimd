@@ -476,62 +476,7 @@ for idx, msg in enumerate(conv_manager.get_history()):
             unsafe_allow_html=True
         )
         
-        # 사용자 메시지 바로 다음에 AI 분석 로그 삽입
-        metadata = msg.get("metadata", {})
-        
-        # 첫 번째 메시지: 증상 파악
-        if idx == 1 and st.session_state.conversation_count >= 1:
-            st.markdown("""
-<div class="admin-log">
-    <span class="log-header">🎯 AI SYSTEM LOG</span>
-    <div class="log-msg">
-        <b>[분석] 기상 직후 피로 호소</b><br>
-        → 단순 과로 아님. 수면의 질 저하 또는 <span class="log-highlight">'기허(氣虛)'</span> 의심<br>
-        → 다음 단계: 시간대 특정하여 기허와 단순 피로 구별
-    </div>
-</div>
-""", unsafe_allow_html=True)
-        
-        # 두 번째 메시지: 수면 확인
-        elif idx == 3 and st.session_state.conversation_count >= 2:
-            st.markdown("""
-<div class="admin-log">
-    <span class="log-header">📊 STEP 2</span>
-    <div class="log-msg">
-        <b>[Logic] 아침 피로 확인 완료</b><br>
-        → 수면 회복력 저하 = <span class="log-highlight">기허(氣虛) 가능성 80%</span><br>
-        → 다음 단계: 소화기능 확인하여 비기허(脾氣虛) 판별
-    </div>
-</div>
-""", unsafe_allow_html=True)
-        
-        # 세 번째 메시지: 소화 확인
-        elif idx == 5 and st.session_state.conversation_count >= 3:
-            st.markdown("""
-<div class="admin-log">
-    <span class="log-header">📊 STEP 3</span>
-    <div class="log-msg">
-        <b>[진단 확정] 식곤증 + 만성피로</b><br>
-        = <span class="log-highlight">비기허(脾氣虛) + 습담(濕痰) 정체</span> 확정<br>
-        → 설진(혀 진단)으로 시각적 증거 확보 단계
-    </div>
-</div>
-""", unsafe_allow_html=True)
-        
-        # 네 번째 메시지: 혀 선택 후 클로징
-        elif idx >= 7 and st.session_state.conversation_count >= 4:
-            st.markdown("""
-<div class="admin-log" style="border: 2px solid #059669;">
-    <span class="log-header" style="color:#059669;">💡 SALES OPPORTUNITY</span>
-    <div class="log-msg">
-        <b>[전략] 3단계 문진 + 설진 완료</b><br>
-        → 환자가 스스로 몸 상태 심각성 인지<br><br>
-        <span class="log-highlight">고가 패키지(공진단/녹용) 제안 타이밍 도달</span><br>
-        이 타이밍에 <b>'집중 면역 프로그램'</b> 제안 시<br>
-        동의율 <b>80% 이상</b>으로 상승
-    </div>
-</div>
-""", unsafe_allow_html=True)
+        # AI 로그는 제거 - DOM 충돌 방지
 
 # 채팅 영역 종료
 st.markdown("</div>", unsafe_allow_html=True)
