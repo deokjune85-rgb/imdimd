@@ -444,12 +444,14 @@ for idx, msg in enumerate(conv_manager.get_history()):
                     info = TONGUE_TYPES[tongue_type]
                     image_path = info.get('image', '')
                     if image_path:
-                        chat_html += f"""
-<div style="text-align: center; margin: 20px auto; max-width: 400px;">
-    <img src="{image_path}" style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-    <div style="margin-top: 10px; font-size: 15px; color: #6B7280; font-weight: 600;">선택하신 혀: {info['name']}</div>
-</div>
-"""
+                        # HTML로 넣지 말고 st.image로 출력
+                        st.markdown(
+                            f"<div style='text-align:center; margin: 20px 0;'>"
+                            f"<div style='font-size: 16px; color: #059669; font-weight: 700; margin-bottom: 10px;'>✅ 선택하신 혀: {info['name']}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                        st.image(image_path, use_container_width=True)
         
     elif msg["role"] == "user":
         # 환자(원장) 메시지 - 흰색 카드
