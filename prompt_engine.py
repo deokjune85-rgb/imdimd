@@ -9,7 +9,7 @@ prompt_engine.py
   initial → symptom_explore → sleep_check → digestion_check → tongue_select → conversion → complete
 
 중요 규칙:
-- tongue_select 단계 이전에는 "혀", "설진", "혀 사진", "혀 상태" 같은 말 절대 금지.
+- tongue_select 이전에는 "혀", "설진", "혀 사진", "혀 상태" 같은 말 절대 금지.
 - 욕/개소리는 app.py에서 stage를 막기 때문에,
   여기서는 그냥 부드럽게 받되, 단계는 한 칸씩만 전진한다고 생각하면 된다.
 """
@@ -17,18 +17,41 @@ prompt_engine.py
 from typing import Any, Dict, List
 import os
 
+import streamlit as st
+
 try:
     import google.generativeai as genai
 except ImportError:
     genai = None
 
 # ----------------------------------------
+# API 키 로딩
+# ----------------------------------------
+def _load_api_key() -> str:
+    # 1) Streamlit secrets
+    try:
+        key = st.secrets["GOOGLE_API_KEY"]
+        if key:
+            return key
+    except Exception:
+        pass
+
+    # 2) 환경변수
+    key = os.getenv("GOOGLE_API_KEY")
+    if key:
+        return key
+
+    return ""
+
+
+# ----------------------------------------
 # 모델 설정
 # ----------------------------------------
 MODEL_NAME = "gemini-1.5-flash-latest"
 
-_api_key = os.getenv("GOOGLE_API_KEY")
+_api_key = _load_api_key()
 _model = None
+
 if genai is not None and _api_key:
     try:
         genai.configure(api_key=_api_key)
@@ -175,14 +198,12 @@ def _build_system_instruction(stage: str) -> str:
 # ----------------------------------------
 def _call_llm(system_instruction: str, history: List[Dict[str, str]], user_input: str) -> str:
     """Gemini 호출. 실패 시 아주 단순한 fallback 문구."""
-    # history: [{"role": "user"/"ai", "text": "..."}]
-
     if _model is None:
-        # API 없을 때 간단 fallback
+        # ⚠️ 여기까지 왔다는 건 API 키/라이브러리 설정이 안 된 상태다.
         return (
-            "원장님 말씀 이해했습니다. 이 환경에서는 실제 AI 모델 호출이 제한되어 있어 "
-            "아주 단순하게만 응답드릴 수 있습니다. 증상에 대해 조금만 더 구체적으로 "
-            "설명해 주시면, 그에 맞춰 다음 질문을 이어가겠습니다."
+            "원장님, 내부 설정 문제로 지금은 데모용 간단 답변만 가능합니다. "
+            "관리자 환경에서 GOOGLE_API_KEY와 google-generativeai 설치 상태를 확인해주셔야 "
+            "실제 AI 답변이 자연스럽게 이어집니다."
         )
 
     msgs = [
@@ -197,7 +218,6 @@ def _call_llm(system_instruction: str, history: List[Dict[str, str]], user_input
         g_role = "user" if role == "user" else "assistant"
         msgs.append({"role": g_role, "parts": [text]})
 
-    # 마지막 턴 사용자 발화
     msgs.append({"role": "user", "parts": [user_input]})
 
     try:
