@@ -448,38 +448,15 @@ st.markdown(
 )
 
 # ============================================
-# 5. 채팅 히스토리 출력 (개별 컴포넌트 방식)
+# 5. 채팅 히스토리 출력 (Streamlit 네이티브 컴포넌트)
 # ============================================
-st.markdown('<div class="chat-area">', unsafe_allow_html=True)
-
-for idx, msg in enumerate(conv_manager.get_history()):
+for msg in conv_manager.get_history():
     if msg["role"] == "ai":
-        # AI 메시지 (개별 출력)
-        st.markdown(f'<div class="ai-msg">{msg["text"]}</div>', unsafe_allow_html=True)
-        
-        # 혀 선택 직후 AI 메시지라면 선택된 사진 크게 표시
-        if idx > 0 and st.session_state.get("selected_tongue_type"):
-            prev_msg = conv_manager.get_history()[idx - 1]
-            if prev_msg.get("role") == "user" and "[선택:" in prev_msg.get("text", ""):
-                tongue_type = st.session_state.selected_tongue_type
-                if tongue_type in TONGUE_TYPES:
-                    # 사진 표시 제거 - 선택만 처리
-                    pass
-    
+        with st.chat_message("assistant"):
+            st.markdown(msg["text"], unsafe_allow_html=True)
     elif msg["role"] == "user":
-        # 환자(원장) 메시지 - 흰색 카드 (개별 출력)
-        st.markdown(
-            f'<div class="msg-right">'
-            f'<div class="patient-card">'
-            f'<div class="patient-text">{msg["text"]}</div>'
-            f'</div></div>',
-            unsafe_allow_html=True
-        )
-        
-        # AI 로그는 제거 - DOM 충돌 방지
-
-# 채팅 영역 종료
-st.markdown("</div>", unsafe_allow_html=True)
+        with st.chat_message("user"):
+            st.markdown(msg["text"])
 
 
 # ============================================
@@ -920,12 +897,12 @@ if user_input:
         conv_manager.update_stage("tongue_select")
         manual_response_given = True
     
-    # 수동 응답이 있으면 여기서 종료 (API 호출 건너뛰기)
+    # 수동 응답이 있으면 API 호출 건너뛰기 (rerun 제거)
     if manual_response_given:
-        st.rerun()
+        pass  # 메시지만 추가, rerun 하지 않음
     
     # solution 단계에서 "네" 또는 긍정 답변 시 자동 클로징
-    if context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
+    elif context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
         st.session_state.mode = "closing"
         closing_msg = """
 <b>보셨습니까 원장님?</b>
