@@ -434,6 +434,25 @@ for idx, msg in enumerate(conv_manager.get_history()):
         chat_html += (
             f'<div class="ai-msg">{msg["text"]}</div>'
         )
+        
+        # 혀 선택 직후 AI 메시지라면 선택된 사진 크게 표시
+        if idx > 0 and st.session_state.get("selected_tongue_type"):
+            prev_msg = conv_manager.get_history()[idx - 1]
+            if prev_msg.get("role") == "user" and "[선택:" in prev_msg.get("text", ""):
+                tongue_type = st.session_state.selected_tongue_type
+                if tongue_type in TONGUE_TYPES:
+                    info = TONGUE_TYPES[tongue_type]
+                    image_path = info.get('image', '')
+                    if image_path:
+                        chat_html += f"""
+<div style="text-align: center; margin: 20px auto; max-width: 400px;">
+    <img src="{image_path}" style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+    <div style="margin-top: 10px; font-size: 15px; color: #6B7280; font-weight: 600;">선택하신 혀: {info['name']}</div>
+</div>
+"""
+                    # 한 번만 표시하고 플래그 제거
+                    st.session_state.selected_tongue_type = None
+        
     elif msg["role"] == "user":
         # 환자(원장) 메시지 - 흰색 카드
         chat_html += (
@@ -606,6 +625,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             
             if st.button(f"{info['visual']}", key="btn_담백설", use_container_width=True):
                 st.session_state.tongue_selected = True
+                st.session_state.selected_tongue_type = tongue_type
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
@@ -620,9 +640,18 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
 
 환자분, 이건 쉬어서 낫는 단계가 지났습니다.
 하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+
+이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+
+<b>지금 필요한 것은:</b>
+1. 막힌 순환을 뚫어주는 약침 치료
+2. 고갈된 원기를 채우는 녹용/공진단
+3. 최소 3개월간의 집중 면역 프로그램
+
+원장님께 제가 미리 언질을 드려놓을까요?
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("diagnosis")
+                conv_manager.update_stage("solution")
                 st.rerun()
         
         # 황태설
@@ -641,6 +670,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             
             if st.button(f"{info['visual']}", key="btn_황태설", use_container_width=True):
                 st.session_state.tongue_selected = True
+                st.session_state.selected_tongue_type = tongue_type
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
@@ -654,9 +684,19 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
 <b style='color:#DC2626;'>⚠️ {info['warning']}</b>
 
 환자분, 이건 쉬어서 낫는 단계가 지났습니다.
+하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+
+이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+
+<b>지금 필요한 것은:</b>
+1. 막힌 순환을 뚫어주는 약침 치료
+2. 고갈된 원기를 채우는 녹용/공진단
+3. 최소 3개월간의 집중 면역 프로그램
+
+원장님께 제가 미리 언질을 드려놓을까요?
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("diagnosis")
+                conv_manager.update_stage("solution")
                 st.rerun()
     
     with col2:
@@ -676,6 +716,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             
             if st.button(f"{info['visual']}", key="btn_치흔설", use_container_width=True):
                 st.session_state.tongue_selected = True
+                st.session_state.selected_tongue_type = tongue_type
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
@@ -691,9 +732,18 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
 보이시나요? 혀 가장자리가 울퉁불퉁하죠?
 혀가 부어서 이빨에 눌린 자국입니다.
 몸이 물 먹은 솜처럼 퉁퉁 불어 순환이 막혔다는 명백한 증거입니다.
+
+이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+
+<b>지금 필요한 것은:</b>
+1. 막힌 순환을 뚫어주는 약침 치료
+2. 고갈된 원기를 채우는 녹용/공진단
+3. 최소 3개월간의 집중 면역 프로그램
+
+원장님께 제가 미리 언질을 드려놓을까요?
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("diagnosis")
+                conv_manager.update_stage("solution")
                 st.rerun()
         
         # 자색설
@@ -712,6 +762,7 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
             
             if st.button(f"{info['visual']}", key="btn_자색설", use_container_width=True):
                 st.session_state.tongue_selected = True
+                st.session_state.selected_tongue_type = tongue_type
                 conv_manager.update_context("selected_tongue", tongue_type)
                 conv_manager.add_message("user", f"[선택: {info['visual']}]")
                 
@@ -725,15 +776,66 @@ if current_stage == "tongue_select" and not st.session_state.get("tongue_selecte
 <b style='color:#DC2626;'>⚠️ {info['warning']}</b>
 
 환자분, 이건 쉬어서 낫는 단계가 지났습니다.
+하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+
+이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+
+<b>지금 필요한 것은:</b>
+1. 막힌 순환을 뚫어주는 약침 치료
+2. 고갈된 원기를 채우는 녹용/공진단
+3. 최소 3개월간의 집중 면역 프로그램
+
+원장님께 제가 미리 언질을 드려놓을까요?
 """
                 conv_manager.add_message("ai", analysis_msg)
-                conv_manager.update_stage("diagnosis")
+                conv_manager.update_stage("solution")
                 st.rerun()
 
 # 일반 텍스트 입력
 user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 
 if user_input:
+    # 혀 타입 텍스트 자동 인식
+    detected_tongue = None
+    for tongue_key in ['담백설', '치흔설', '황태설', '자색설']:
+        if tongue_key in user_input:
+            detected_tongue = tongue_key
+            break
+    
+    # 혀 타입이 감지되고 현재 혀 선택 단계라면
+    if detected_tongue and current_stage == "tongue_select":
+        st.session_state.tongue_selected = True
+        conv_manager.update_context("selected_tongue", detected_tongue)
+        conv_manager.add_message("user", f"[선택: {user_input}]")
+        
+        info = TONGUE_TYPES[detected_tongue]
+        analysis_msg = f"""
+<b>{info['name']}</b>을 선택하셨군요.
+
+{info['analysis']}
+
+주요 증상: {info['symptoms']}
+
+<b style='color:#DC2626;'>⚠️ {info['warning']}</b>
+
+환자분, 이건 쉬어서 낫는 단계가 지났습니다.
+하수구(순환)가 막혔는데 맑은 물(잠/휴식)만 붓는 격입니다.
+
+이대로 두면 만성 두통, 어지럼증은 물론 면역계 질환으로 이어질 수 있는 '경고' 단계입니다.
+
+<b>지금 필요한 것은:</b>
+1. 막힌 순환을 뚫어주는 약침 치료
+2. 고갈된 원기를 채우는 녹용/공진단
+3. 최소 3개월간의 집중 면역 프로그램
+
+원장님께 제가 미리 언질을 드려놓을까요?
+"""
+        conv_manager.add_message("ai", analysis_msg)
+        conv_manager.update_stage("solution")
+        st.rerun()
+        st.stop()
+    
+    # 일반 메시지 처리
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
 
     # 대화 카운트
@@ -743,9 +845,49 @@ if user_input:
 
     context = conv_manager.get_context()
     history = conv_manager.get_formatted_history(for_llm=True)
+    
+    # solution 단계에서 "네" 또는 긍정 답변 시 자동 클로징
+    if context.get("stage") == "solution" and any(word in user_input for word in ["네", "예", "그래", "좋아", "부탁", "알려"]):
+        st.session_state.mode = "closing"
+        closing_msg = """
+<b>보셨습니까 원장님?</b>
 
-    # 3회 이상 대화되면 클로징 멘트 직접 투입
-    if st.session_state.conversation_count >= 3 and st.session_state.mode == "simulation":
+저는 환자의 말을 그냥 듣지 않습니다.
+
+<b>질문(문진) → 연결(변증) → 증거(설진)</b>를 통해
+**'약을 먹을 수밖에 없는 몸 상태'**임을 스스로 인정하게 만듭니다.
+
+방금 체험하신 흐름:
+
+1️⃣ <b>증상 구체화</b>: "언제 제일 힘드세요?" (단순 피로 배제)
+2️⃣ <b>원인 추적</b>: 수면 → 소화 연결 (비기허 변증)
+3️⃣ <b>시각적 증거</b>: 혀 사진으로 확증 (치흔설/황태설 등)
+4️⃣ <b>위기감 조성</b>: "쉬어서 낫는 단계 지났습니다"
+5️⃣ <b>솔루션 제안</b>: 녹용/공진단 필수성 각인
+
+이 과정을 병원 홈페이지에 24시간 붙여놓으면,
+
+밤 11시에 검색하는 직장인도
+아침 8시에 문의하는 주부도
+자동으로 "내 몸이 심각하구나"를 깨닫고 예약 버튼을 누릅니다.
+
+실제 적용 사례:
+- 서울 A한의원: 온라인 문의 40% 증가, 예약 전환율 18% → 22.5%
+- **핵심**: 단순 침(1만원) 문의가 한약 프로그램(30만원~) 상담으로 전환
+
+여기서 딱 한 가지 질문만 남습니다.
+
+<b>"우리 병원에 붙이면, 객단가가 얼마나 오를까?"</b>
+
+이 아래에 병원명, 성함, 연락처만 남겨주시면,
+24시간 안에 원장님 병원 기준 시뮬레이션을 보내드리겠습니다.
+"""
+        conv_manager.add_message("ai", closing_msg)
+        conv_manager.update_stage("conversion")
+        st.rerun()
+
+    # 3회 이상 대화되면 클로징 멘트 직접 투입 (기존 로직 유지)
+    elif st.session_state.conversation_count >= 3 and st.session_state.mode == "simulation":
         st.session_state.mode = "closing"
         closing_msg = """
 <b>보셨습니까 원장님?</b>
