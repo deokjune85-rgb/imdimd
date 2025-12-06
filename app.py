@@ -85,7 +85,7 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    margin-bottom: 200px;
+    margin-bottom: 300px;
 }}
 
 .ai-msg {{
@@ -312,9 +312,8 @@ st.markdown(chat_html, unsafe_allow_html=True)
 # ============================================
 context = conv_manager.get_context()
 if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
-    st.markdown("---")
     st.markdown(
-        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:20px 0 10px;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
+        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:4px 0 8px 0;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
         unsafe_allow_html=True
     )
     
@@ -338,9 +337,9 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
                     unsafe_allow_html=True
                 )
             
-            # 이름 표시
+            # 이름 표시 - 검은색으로 변경
             st.markdown(
-                f"<div style='text-align:center; font-size:13px; font-weight:600; margin:8px 0;'>{tongue_data['name']}</div>",
+                f"<div style='text-align:center; font-size:13px; font-weight:600; margin:4px 0; color:#1F2937;'>{tongue_data['name']}</div>",
                 unsafe_allow_html=True
             )
             
