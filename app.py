@@ -85,7 +85,7 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    margin-bottom: 300px;
+    margin-bottom: 100px;
 }}
 
 .ai-msg {{
@@ -389,6 +389,9 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
                 conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
                 
                 st.rerun()
+    
+    # 투명 스페이서 버튼 (채팅창 가림 방지용)
+    st.markdown('<div style="height:150px;"></div>', unsafe_allow_html=True)
 
 # ============================================
 # 자동 CTA (시뮬레이션 완료 후)
