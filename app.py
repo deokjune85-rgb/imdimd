@@ -321,31 +321,12 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
     # 1x4 가로 배열로 혀 사진 표시
     cols = st.columns(4)
     
-    import os
-    
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            # 혀 사진 표시
-            image_path = tongue_data['image']
-            
-            # 여러 경로 시도
-            possible_paths = [
-                image_path,  # 원본 경로
-                os.path.join('.', image_path),  # ./images/xxx.png
-                os.path.join(os.getcwd(), image_path),  # 절대경로
-            ]
-            
-            image_loaded = False
-            for path in possible_paths:
-                try:
-                    if os.path.exists(path):
-                        st.image(path, use_container_width=True)
-                        image_loaded = True
-                        break
-                except:
-                    continue
-            
-            if not image_loaded:
+            # 혀 사진 표시 - 간단한 경로
+            try:
+                st.image(tongue_data['image'], use_container_width=True)
+            except Exception as e:
                 # 이미지 로드 실패시 이모지로 대체
                 st.markdown(
                     f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
