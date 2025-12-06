@@ -239,6 +239,19 @@ input::placeholder, textarea::placeholder {{
         padding: 11px 15px;
     }}
 }}
+
+/* 에러 메시지 숨기기 */
+.stException {{
+    display: none !important;
+}}
+
+div[data-testid="stException"] {{
+    display: none !important;
+}}
+
+.element-container:has(.stException) {{
+    display: none !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -296,60 +309,62 @@ st.markdown("""
 # ============================================
 # 채팅 히스토리
 # ============================================
-chat_html = '<div class="chat-area">'
+with st.container():
+    chat_html = '<div class="chat-area">'
 
-for msg in conv_manager.get_history():
-    if msg['role'] == 'ai':
-        chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
-    elif msg['role'] == 'user':
-        chat_html += f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
+    for msg in conv_manager.get_history():
+        if msg['role'] == 'ai':
+            chat_html += f'<div class="ai-msg">{msg["text"]}</div>'
+        elif msg['role'] == 'user':
+            chat_html += f'<div class="msg-right"><span class="user-msg">{msg["text"]}</span></div>'
 
-chat_html += '</div>'
-st.markdown(chat_html, unsafe_allow_html=True)
+    chat_html += '</div>'
+    st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
 # 혀 사진 선택 (digestion_check 단계 후 표시)
 # ============================================
 context = conv_manager.get_context()
 if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
-    st.markdown(
-        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:4px 0 8px 0;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
-        unsafe_allow_html=True
-    )
-    
-    # 1x4 가로 배열로 혀 사진 표시
-    cols = st.columns(4)
-    
-    from PIL import Image
-    
-    for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
-        with cols[idx]:
-            # 혀 사진 표시
-            image_path = tongue_data['image']
-            
-            try:
-                img = Image.open(image_path)
-                st.image(img, use_container_width=True)
-            except Exception as e:
-                # 이미지 로드 실패시 이모지로 대체
+    with st.container():
+        st.markdown(
+            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:4px 0 8px 0;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
+            unsafe_allow_html=True
+        )
+        
+        # 1x4 가로 배열로 혀 사진 표시
+        cols = st.columns(4)
+        
+        from PIL import Image
+        
+        for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
+            with cols[idx]:
+                # 혀 사진 표시
+                image_path = tongue_data['image']
+                
+                try:
+                    img = Image.open(image_path)
+                    st.image(img, use_container_width=True)
+                except Exception as e:
+                    # 이미지 로드 실패시 이모지로 대체
+                    st.markdown(
+                        f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
+                        unsafe_allow_html=True
+                    )
+                
+                # 이름 표시 - 검은색으로 변경
                 st.markdown(
-                    f"<div style='text-align:center; font-size:80px; padding:20px 0;'>{tongue_data['emoji']}</div>",
+                    f"<div style='text-align:center; font-size:13px; font-weight:600; margin:4px 0; color:#1F2937;'>{tongue_data['name']}</div>",
                     unsafe_allow_html=True
                 )
-            
-            # 이름 표시 - 검은색으로 변경
-            st.markdown(
-                f"<div style='text-align:center; font-size:13px; font-weight:600; margin:4px 0; color:#1F2937;'>{tongue_data['name']}</div>",
-                unsafe_allow_html=True
-            )
-            
-            # 선택 버튼
-            if st.button(f"선택", key=f"tongue_{tongue_key}", use_container_width=True):
-                conv_manager.update_context('selected_tongue', tongue_key)
-                conv_manager.update_stage('tongue_select')
                 
-                # 혀 진단 메시지 추가
-                diagnosis_msg = f"""**{tongue_data['name']}** 선택하셨습니다.
+                # 선택 버튼
+                if st.button(f"선택", key=f"tongue_{tongue_key}", use_container_width=True):
+                    conv_manager.update_context('selected_tongue', tongue_key)
+                    conv_manager.update_stage('tongue_select')
+                    
+                    # 혀 진단 메시지 추가
+                    diagnosis_msg = f"""**{tongue_data['name']}** 선택하셨습니다.
 
 {tongue_data['analysis']}
 
@@ -381,17 +396,17 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
 폭발적인 매출 신화가 아닙니다. 
 다만 원장님이 직접 설명해야 했던 부분을 AI가 온라인에서 대신 떠받쳐주는 결과입니다."""
-                
-                conv_manager.add_message("ai", diagnosis_msg)
-                
-                # 건강 점수 계산
-                conv_manager.calculate_health_score()
-                conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
-                
-                st.rerun()
-    
-    # 투명 스페이서 버튼 (채팅창 가림 방지용)
-    st.markdown('<div style="height:150px;"></div>', unsafe_allow_html=True)
+                    
+                    conv_manager.add_message("ai", diagnosis_msg)
+                    
+                    # 건강 점수 계산
+                    conv_manager.calculate_health_score()
+                    conv_manager.update_stage('conversion')  # diagnosis → conversion으로 변경
+                    
+                    st.rerun()
+        
+        # 투명 스페이서 버튼 (채팅창 가림 방지용)
+        st.markdown('<div style="height:150px;"></div>', unsafe_allow_html=True)
 
 # ============================================
 # 자동 CTA (시뮬레이션 완료 후)
@@ -401,45 +416,46 @@ last_msg_is_ai = chat_history and chat_history[-1]['role'] == 'ai'
 
 # 시뮬레이션 완료 판단 (6회 이상 대화 + AI 답변으로 끝)
 if len(chat_history) >= 6 and last_msg_is_ai and conv_manager.get_context()['stage'] != 'complete':
-    st.markdown("---")
-    st.markdown(
-        f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">이 시스템을 한의원에 도입하시겠습니까?</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다</p>",
-        unsafe_allow_html=True
-    )
-    
-    with st.form("consulting_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            clinic_name = st.text_input("병원명", placeholder="서울한의원")
-        with col2:
-            director_name = st.text_input("원장님 성함", placeholder="홍길동")
+    with st.container():
+        st.markdown("---")
+        st.markdown(
+            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">이 시스템을 한의원에 도입하시겠습니까?</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다</p>",
+            unsafe_allow_html=True
+        )
         
-        contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
-        
-        submitted = st.form_submit_button("무료 도입 견적서 받기", use_container_width=True)
-        
-        if submitted:
-            if not clinic_name or not director_name or not contact:
-                st.error("필수 정보를 모두 입력해주세요.")
-            else:
-                lead_data = {
-                    'name': director_name,
-                    'contact': contact,
-                    'symptom': f"병원명: {clinic_name}",
-                    'preferred_date': '즉시 상담 희망',
-                    'chat_summary': conv_manager.get_summary(),
-                    'source': 'IMD_Strategic_Consulting',
-                    'type': 'Oriental_Clinic'
-                }
-                
-                success, message = lead_handler.save_lead(lead_data)
-                
-                if success:
-                    completion_msg = f"""
+        with st.form("consulting_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                clinic_name = st.text_input("병원명", placeholder="서울한의원")
+            with col2:
+                director_name = st.text_input("원장님 성함", placeholder="홍길동")
+            
+            contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
+            
+            submitted = st.form_submit_button("무료 도입 견적서 받기", use_container_width=True)
+            
+            if submitted:
+                if not clinic_name or not director_name or not contact:
+                    st.error("필수 정보를 모두 입력해주세요.")
+                else:
+                    lead_data = {
+                        'name': director_name,
+                        'contact': contact,
+                        'symptom': f"병원명: {clinic_name}",
+                        'preferred_date': '즉시 상담 희망',
+                        'chat_summary': conv_manager.get_summary(),
+                        'source': 'IMD_Strategic_Consulting',
+                        'type': 'Oriental_Clinic'
+                    }
+                    
+                    success, message = lead_handler.save_lead(lead_data)
+                    
+                    if success:
+                        completion_msg = f"""
 견적서 발송이 완료되었습니다.
 
 {director_name} 원장님, 감사합니다.
@@ -455,14 +471,14 @@ if len(chat_history) >= 6 and last_msg_is_ai and conv_manager.get_context()['sta
 
 담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
 """
-                    conv_manager.add_message("ai", completion_msg)
-                    conv_manager.update_stage('complete')
-                    
-                    st.success("견적서 신청이 완료되었습니다!")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error(f"오류: {message}")
+                        conv_manager.add_message("ai", completion_msg)
+                        conv_manager.update_stage('complete')
+                        
+                        st.success("견적서 신청이 완료되었습니다!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"오류: {message}")
 
 # ============================================
 # 입력창
