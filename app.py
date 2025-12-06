@@ -5,6 +5,9 @@ IMD Strategic Consulting - AI Sales Bot (B2B)
 
 import streamlit as st
 import time
+from pathlib import Path
+import os
+
 from conversation_manager import get_conversation_manager
 from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
@@ -17,6 +20,14 @@ from config import (
     COLOR_BORDER,
     TONGUE_TYPES
 )
+
+from PIL import Image
+
+# ============================================
+# 경로 기본 세팅
+# ============================================
+BASE_DIR = Path(__file__).resolve().parent  # app.py 위치
+IMAGES_DIR = BASE_DIR / "images"            # images 폴더
 
 # ============================================
 # 페이지 설정
@@ -85,7 +96,8 @@ footer {{
     padding: 12px 20px 4px 20px;
     background: white !important;
     min-height: 150px;
-    margin-bottom: 100px;
+    /* 입력창 + 푸터 때문에 여유 크게 */
+    margin-bottom: 240px;
 }}
 
 .ai-msg {{
@@ -134,7 +146,7 @@ footer {{
 /* 입력창 */
 .stChatInput {{
     position: fixed !important;
-    bottom: 60px !important;
+    bottom: 52px !important;  /* 푸터 위에 딱 올라오게 */
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
@@ -175,7 +187,7 @@ footer {{
     right: 0;
     width: 100%;
     background: white !important;
-    padding: 12px 20px;
+    padding: 8px 20px 10px 20px;
     text-align: center;
     font-size: 11px;
     color: #9CA3AF;
@@ -194,7 +206,7 @@ footer {{
     padding: 20px;
     border: 1px solid {COLOR_BORDER};
     border-radius: 12px;
-    margin: 16px 20px 180px 20px;
+    margin: 16px 20px 260px 20px;
 }}
 
 .stForm label {{
@@ -232,6 +244,7 @@ input::placeholder, textarea::placeholder {{
     
     .chat-area {{
         padding: 2px 16px 4px 16px !important;
+        margin-bottom: 260px;
     }}
     
     .ai-msg {{
@@ -308,14 +321,56 @@ chat_html += '</div>'
 st.markdown(chat_html, unsafe_allow_html=True)
 
 # ============================================
+# 이미지 경로 찾기 유틸 (여기서 최대한 다 맞춰줌)
+# ============================================
+def resolve_tongue_image_path(raw_path: str) -> Path | None:
+    """
+    config의 image 값(raw_path)을 받아서
+    - 절대경로 / 상대경로 / images 폴더 / 확장자 없음
+    전부 고려해서 실제 존재하는 Path를 리턴.
+    없으면 None.
+    """
+    if not raw_path:
+        return None
+
+    raw_path = raw_path.strip()
+    candidates = []
+
+    # 1) 절대경로인 경우
+    if os.path.isabs(raw_path):
+        candidates.append(Path(raw_path))
+
+    p = Path(raw_path)
+
+    # 2) 그대로 상대경로 (config에서 'images/xxx.png'로 줬을 때)
+    candidates.append(BASE_DIR / p)
+
+    # 3) images 폴더 기준 (config에서 'pale_tongue.png'만 줬을 때)
+    candidates.append(IMAGES_DIR / p.name)
+
+    # 4) 확장자가 없다면 .png / .jpg / .jpeg / .webp 붙여서 시도
+    if p.suffix == "":
+        for ext in [".png", ".jpg", ".jpeg", ".webp"]:
+            candidates.append(BASE_DIR / f"{raw_path}{ext}")
+            candidates.append(IMAGES_DIR / f"{p.name}{ext}")
+
+    # 우선 후보들 중에서 실제 존재하는 것 찾기
+    for c in candidates:
+        if c.exists():
+            return c
+
+    # 5) 그래도 못 찾으면, images 폴더 안에서 이름 비슷한 거라도 찾기
+    stem = p.stem.lower() if p.stem else raw_path.lower()
+    if IMAGES_DIR.exists():
+        for file in IMAGES_DIR.glob("*"):
+            if file.is_file() and file.stem.lower() == stem:
+                return file
+
+    return None
+
+# ============================================
 # 혀 사진 선택 (digestion_check 단계 후 표시)
 # ============================================
-from pathlib import Path
-import os
-
-BASE_DIR = Path(__file__).resolve().parent  # app.py가 있는 폴더
-IMAGES_DIR = BASE_DIR / "images"            # images 폴더
-
 context = conv_manager.get_context()
 if context.get('stage') == 'digestion_check' and not context.get('selected_tongue'):
     st.markdown("---")
@@ -326,44 +381,20 @@ if context.get('stage') == 'digestion_check' and not context.get('selected_tongu
 
     cols = st.columns(4)
 
-    from PIL import Image
-
     for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
         with cols[idx]:
-            # -------------------------------
-            # 1) config 에서 넘어온 값
-            #    - "pale_tongue.png" 일 수도 있고
-            #    - "images/pale_tongue.png" 일 수도 있음
-            # -------------------------------
             raw_path = tongue_data.get("image", "")
 
-            image_path = None
+            image_path = resolve_tongue_image_path(raw_path)
 
-            # 절대 경로로 돼있으면 그대로 사용
-            if raw_path and os.path.isabs(raw_path):
-                candidate = Path(raw_path)
-                if candidate.exists():
-                    image_path = candidate
-            else:
-                # ① app.py 기준 상대경로 (예: "images/pale_tongue.png")
-                candidate1 = BASE_DIR / raw_path if raw_path else None
-                # ② images 폴더 + 파일명 (예: "pale_tongue.png"만 들어온 경우)
-                candidate2 = IMAGES_DIR / raw_path if raw_path else None
+            # 디버깅 겸, 개발자만 보는 용도 (원장님 눈에는 거의 안 띔)
+            # st.caption(f"{tongue_data['name']} → {image_path if image_path else '이미지 없음'}")
 
-                if candidate1 and candidate1.exists():
-                    image_path = candidate1
-                elif candidate2 and candidate2.exists():
-                    image_path = candidate2
-
-            # -------------------------------
-            # 2) 실제 이미지 렌더링
-            # -------------------------------
             try:
                 if image_path and image_path.exists():
                     img = Image.open(str(image_path))
                     st.image(img, use_container_width=True)
                 else:
-                    # 경로 안 맞으면 강제로 예외 발생시켜 이모지 fallback 사용
                     raise FileNotFoundError(f"Image not found: {raw_path}")
             except Exception:
                 # 이미지 로드 실패시 이모지로 대체
