@@ -38,6 +38,17 @@ st.set_page_config(
 st.markdown(
     f"""
 <style>
+/* Streamlit 기본 푸터/헤더 숨기기 */
+#MainMenu {{visibility: hidden;}}
+footer {{visibility: hidden;}}
+header {{visibility: hidden;}}
+.stDeployButton {{display: none;}}
+[data-testid="stToolbar"] {{display: none;}}
+[data-testid="stDecoration"] {{display: none;}}
+[data-testid="stStatusWidget"] {{display: none;}}
+.viewerBadge_container__r5tak {{display: none;}}
+.styles_viewerBadge__CvC9N {{display: none;}}
+
 /* 전체 흰색 배경 */
 .stApp {{
     background: white !important;
@@ -609,7 +620,7 @@ st.markdown(
     """
 <div class="footer">
     <b>IMD Strategic Consulting</b><br>
-    한의원 전용 AI 매출 엔진 | 전국 200개 한의원 도입 완료
+    메디컬 전용 AI 매출 엔진 | 전국 수많은 병의원 도입 완료
 </div>
 """,
     unsafe_allow_html=True,
