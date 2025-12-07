@@ -2,15 +2,20 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ConverDream - AI 세일즈 상담</title>
     <meta name="description" content="AI가 실시간으로 고객과 대화하며 설득하는 세일즈 봇">
     <meta property="og:title" content="ConverDream | AI 세일즈 상담">
     <meta property="og:description" content="AI가 실시간으로 고객과 대화하며 설득하는 세일즈 봇">
     <meta property="og:url" content="https://www.converdream.co.kr">
     <style>
-        body, html {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
             height: 100%;
             overflow: hidden;
         }
@@ -18,10 +23,11 @@
             width: 100%;
             height: 100%;
             border: none;
+            display: block;
         }
     </style>
 </head>
 <body>
-    <iframe src="https://imdimd.streamlit.app/?embed=true"></iframe>
+    <iframe src="https://imdimd.streamlit.app/?embed=true&embed_options=light_theme" allowfullscreen></iframe>
 </body>
 </html>
