@@ -559,13 +559,28 @@ if user_input:
     ) + 1
 
     context = conv_manager.get_context()
-    # 수정된 코드
-    history_for_llm = conv_manager.get_history()  # for_llm=True 제거
+    history_for_llm = conv_manager.get_history()
 
     # 제미나이에게 넘겨서 답변 + 다음 단계 받기
     raw_ai = generate_ai_response(user_input, context, history_for_llm)
 
     clean_ai, new_stage = parse_stage_tag(raw_ai, context.get("stage", "initial"))
+
+    # ★★★ 여기부터 추가 ★★★
+    current_stage = context.get("stage", "initial")
+    turn_count = st.session_state.conversation_count
+    
+    # 2턴째 또는 3턴째에 실시간 후기 삽입
+    if turn_count == 2 or turn_count == 3:
+        from prompt_engine import generate_veritas_story
+        
+        # 증상 추출 (간단히)
+        symptom = "만성 피로와 수면 장애"
+        success_story = generate_veritas_story(symptom)
+        
+        # AI 답변에 후기 추가
+        clean_ai += f"\n\n---\n\n💬 **실제 환자 후기**\n\n\"{success_story}\"\n\n---\n"
+    # ★★★ 여기까지 추가 ★★★
 
     conv_manager.add_message("ai", clean_ai)
     conv_manager.update_stage(new_stage)
