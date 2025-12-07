@@ -158,8 +158,8 @@ footer {{
 }}
 
 .stChatInput > div {{
-    max-width: 680px !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    margin: 0 8px !important;
     border: 1px solid #E5E7EB !important;
     border-radius: 24px !important;
     background: white !important;
