@@ -559,7 +559,8 @@ if user_input:
     ) + 1
 
     context = conv_manager.get_context()
-    history_for_llm = conv_manager.get_formatted_history(for_llm=True)
+    # 수정된 코드
+    history_for_llm = conv_manager.get_history()  # for_llm=True 제거
 
     # 제미나이에게 넘겨서 답변 + 다음 단계 받기
     raw_ai = generate_ai_response(user_input, context, history_for_llm)
