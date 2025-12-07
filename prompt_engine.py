@@ -185,24 +185,54 @@ def _call_llm(
     prompt = _build_prompt(context, history, user_input)
 
     try:
-        resp = model.generate_content(prompt)
-        text = (getattr(resp, "text", "") or "").strip()
+        # 디버깅: 프롬프트 길이 확인
+        if st is not None:
+            st.write(f"DEBUG: 프롬프트 길이 = {len(prompt)} 글자")
+        
+        resp = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.7,
+                "top_p": 0.95,
+                "top_k": 40,
+                "max_output_tokens": 1024,
+            }
+        )
+        
+        # 응답 확인
+        if hasattr(resp, 'text'):
+            text = resp.text.strip()
+        elif hasattr(resp, 'parts'):
+            text = ''.join(part.text for part in resp.parts).strip()
+        else:
+            raise ValueError(f"예상치 못한 응답 형식: {type(resp)}")
+        
         if not text:
             raise ValueError("빈 응답")
+            
         return text
+        
     except Exception as e:
-        # 콘솔에는 정확한 예외 찍고
-        try:
-            print("[DEBUG] Gemini 호출 오류:", repr(e))
-        except Exception:
-            pass
-
-        # 사용자에게는 안전한 문구만
-        return (
-            "원장님, 방금 입력은 잘 받았지만 지금은 AI 서버 쪽에서 일시적인 오류가 발생했습니다.\n"
-            "잠시 후 다시 시도해 주시거나, 관리자에게 Gemini 사용량과 설정을 확인해 달라고 "
-            "전달해 주시면 좋겠습니다."
-        )
+        # 에러 로그 출력
+        error_msg = str(e)
+        if st is not None:
+            st.error(f"DEBUG: Gemini 에러 - {error_msg}")
+        
+        print(f"[ERROR] Gemini API 호출 실패: {error_msg}")
+        
+        # 특정 에러에 따른 안내
+        if "quota" in error_msg.lower():
+            return "API 사용량 한도를 초과했습니다. Google AI Studio에서 할당량을 확인해주세요."
+        elif "api_key" in error_msg.lower():
+            return "API 키가 유효하지 않습니다. Streamlit Secrets 설정을 확인해주세요."
+        elif "safety" in error_msg.lower():
+            return "안전 필터에 걸렸습니다. 다른 표현으로 다시 시도해주세요."
+        else:
+            return (
+                f"원장님, AI 서버 오류가 발생했습니다.\n"
+                f"에러 내용: {error_msg}\n\n"
+                "다시 시도해주세요."
+            )
 
 
 # ============================================
