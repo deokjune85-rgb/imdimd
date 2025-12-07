@@ -28,7 +28,7 @@ from config import (
 st.set_page_config(
     page_title="IMD Strategic Consulting",
     page_icon="💼",
-    layout="centered",  # ← 이게 문제
+    layout="centered",
     initial_sidebar_state="collapsed",
 )
 
@@ -59,10 +59,9 @@ header {{visibility: hidden;}}
 }}
 
 .main .block-container {{
-    padding: 0 8px !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 720px !important;
+    margin: 0 auto !important;
     background: white !important;
 }}
 
@@ -158,8 +157,8 @@ footer {{
 }}
 
 .stChatInput > div {{
-    max-width: 100% !important;
-    margin: 0 8px !important;
+    max-width: 680px !important;
+    margin: 0 auto !important;
     border: 1px solid #E5E7EB !important;
     border-radius: 24px !important;
     background: white !important;
