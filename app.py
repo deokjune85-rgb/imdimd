@@ -545,46 +545,43 @@ user_input = st.chat_input("원장님의 생각을 말씀해주세요")
 if user_input:
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
 
-    st.session_state.conversation_count = st.session_state.get(
-        "conversation_count", 0
-    ) + 1
+    st.session_state.conversation_count = st.session_state.get("conversation_count", 0) + 1
 
     context = conv_manager.get_context()
     history_for_llm = conv_manager.get_history()
 
-    # 제미나이에게 넘겨서 답변 + 다음 단계 받기
     raw_ai = generate_ai_response(user_input, context, history_for_llm)
-
     clean_ai, new_stage = parse_stage_tag(raw_ai, context.get("stage", "initial"))
 
-    # ★★★ 여기부터 추가 ★★★
-    current_stage = context.get("stage", "initial")
-    turn_count = st.session_state.conversation_count
-    
-    # 2턴째 또는 3턴째에 실시간 후기 삽입
-    if turn_count == 2 or turn_count == 3:
+    # ★★★ 수정: conversion 단계로 넘어갈 때만 후기 추가 ★★★
+    if new_stage == "conversion":
         from prompt_engine import generate_veritas_story
         
-        # 증상 추출 (간단히)
-        # 기존    
-        symptom = "만성 피로와 수면 장애"
-
-        # 수정 → 실제 대화에서 증상 추출
-        user_messages = [msg.get("text", "") for msg in conv_manager.get_history() if msg.get("role") == "user"]
-        recent_symptom = " ".join(user_messages[:3])  # 최근 3개 유저 메시지 합침
-
-        symptom = recent_symptom if recent_symptom else "만성 피로"
-        success_story = generate_veritas_story(symptom) 
-               
-        # AI 답변에 후기 추가
+        # 실제 증상만 추출 (의미 없는 단어 필터링)
+        user_messages = [
+            msg.get("text", "") 
+            for msg in conv_manager.get_history() 
+            if msg.get("role") == "user"
+        ]
+        
+        # 증상으로 보이는 메시지만 선택 (길이 5자 이상, 한글 포함)
+        symptom_messages = [
+            m for m in user_messages 
+            if len(m) >= 5 and any(ord('가') <= ord(c) <= ord('힣') for c in m)
+        ]
+        
+        if symptom_messages:
+            symptom = " ".join(symptom_messages[:2])  # 최대 2개
+        else:
+            symptom = "만성 피로와 전신 무력감"
+        
+        success_story = generate_veritas_story(symptom)
         clean_ai += f"\n\n---\n\n💬 **실제 환자 후기**\n\n\"{success_story}\"\n\n---\n"
-    # ★★★ 여기까지 추가 ★★★
 
     conv_manager.add_message("ai", clean_ai)
     conv_manager.update_stage(new_stage)
 
-    # 약간의 딜레이 (너무 번쩍 느낌 방지용, 완전 스트리밍은 불가)
-    time.sleep(0.3)
+    time.sleep(0.2)
     st.rerun()
 
 # ============================================
