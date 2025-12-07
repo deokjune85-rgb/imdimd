@@ -482,7 +482,13 @@ if show_tongue_ui:
 current_stage = conv_manager.get_context().get("stage", "initial")
 selected_tongue = conv_manager.get_context().get("selected_tongue")
 
-if current_stage == "conversion" and selected_tongue and current_stage != "complete":
+# ★★★ 수정: conversion 단계이거나 "도입하시겠습니까" 멘트가 나왔으면 폼 표시 ★★★
+show_cta = (current_stage == "conversion") or (
+    len(conv_manager.get_history()) > 0 and 
+    "도입하시겠습니까" in conv_manager.get_history()[-1].get("text", "")
+)
+
+if show_cta and current_stage != "complete":
     with st.container():
         st.markdown("---")
         st.markdown(
@@ -545,7 +551,6 @@ if current_stage == "conversion" and selected_tongue and current_stage != "compl
                         st.rerun()
                     else:
                         st.error(f"오류: {message}")
-
 # ============================================
 # 입력창 + 제미나이 호출
 # ============================================
