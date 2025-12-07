@@ -364,9 +364,9 @@ st.markdown(
     """
 <div class="title-box">
     <h1>IMD STRATEGIC CONSULTING</h1>
-    <div class="sub">원장님의 진료 철학을 완벽하게 학습한 'AI 수석 실장'을 소개합니다</div>
+    <div class="sub">원장님의 진료 철학을 학습할수 있는 'AI 실장'입니다.</div>
     <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">
-        엑셀은 기록만 하지만, AI는 '매출'을 만듭니다 (체험시간: 2분)
+        엑셀은 기록만 하지만, AI는 '매출'을 만듭니다. (체험시간: 2분)
     </div>
 </div>
 """,
