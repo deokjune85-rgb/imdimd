@@ -46,7 +46,7 @@ def _load_api_key() -> Optional[str]:
 
 
 GEMINI_API_KEY: Optional[str] = _load_api_key()
-MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
 
 LLM_ENABLED: bool = GEMINI_API_KEY is not None and genai is not None
 
