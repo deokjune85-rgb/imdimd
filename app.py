@@ -566,9 +566,16 @@ if user_input:
         from prompt_engine import generate_veritas_story
         
         # 증상 추출 (간단히)
+        # 기존    
         symptom = "만성 피로와 수면 장애"
-        success_story = generate_veritas_story(symptom)
-        
+
+        # 수정 → 실제 대화에서 증상 추출
+        user_messages = [msg.get("text", "") for msg in conv_manager.get_history() if msg.get("role") == "user"]
+        recent_symptom = " ".join(user_messages[:3])  # 최근 3개 유저 메시지 합침
+
+        symptom = recent_symptom if recent_symptom else "만성 피로"
+        success_story = generate_veritas_story(symptom) 
+               
         # AI 답변에 후기 추가
         clean_ai += f"\n\n---\n\n💬 **실제 환자 후기**\n\n\"{success_story}\"\n\n---\n"
     # ★★★ 여기까지 추가 ★★★
