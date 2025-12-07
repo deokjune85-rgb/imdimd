@@ -59,9 +59,10 @@ header {{visibility: hidden;}}
 }}
 
 .main .block-container {{
-    padding: 0 !important;
-    max-width: 720px !important;
-    margin: 0 auto !important;
+    padding: 0 8px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
     background: white !important;
 }}
 
