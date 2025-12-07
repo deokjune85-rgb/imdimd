@@ -28,7 +28,7 @@ from config import (
 st.set_page_config(
     page_title="IMD Strategic Consulting",
     page_icon="💼",
-    layout="centered",
+    layout="wide",  # ← centered → wide
     initial_sidebar_state="collapsed",
 )
 
