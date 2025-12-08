@@ -1,6 +1,6 @@
 """
 IMD Strategic Consulting - AI Sales Bot (B2B)
-한의원 원장님 대상 AI 실장 시스템 판매 데모
+멀티 페르소나 지원: ?client=gs (안과), ?client=nana (성형), 기본(한의원)
 """
 
 import time
@@ -13,27 +13,28 @@ from conversation_manager import get_conversation_manager
 from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
 from config import (
+    CFG,
+    TONGUE_TYPES,
     COLOR_PRIMARY,
     COLOR_BG,
     COLOR_TEXT,
     COLOR_AI_BUBBLE,
     COLOR_USER_BUBBLE,
     COLOR_BORDER,
-    TONGUE_TYPES,
 )
 
 # ============================================
-# 페이지 설정
+# 페이지 설정 (CFG에서 가져오기)
 # ============================================
 st.set_page_config(
-    page_title="IMD Strategic Consulting",
-    page_icon="💼",
+    page_title=CFG["APP_TITLE"],
+    page_icon=CFG["APP_ICON"],
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
 # ============================================
-# CSS (에러 숨기기 제거 버전)
+# CSS
 # ============================================
 st.markdown(
     f"""
@@ -255,7 +256,7 @@ input::placeholder, textarea::placeholder {{
         font-size: 15px !important;
     }}
     
-    /* 모바일에서 혀 사진 4개 가로 배열 강제 */
+    /* 모바일에서 선택지 4개 가로 배열 강제 */
     div[data-testid="stHorizontalBlock"] {{
         gap: 4px !important;
     }}
@@ -319,10 +320,6 @@ ALLOWED_STAGES = {
 
 
 def parse_stage_tag(text: str, current_stage: str) -> (str, str):
-    """
-    제미나이 답변 맨 끝의 [[STAGE:...]] 태그를 잘라내고, stage만 돌려준다.
-    태그 없거나 이상하면 stage는 그대로 유지.
-    """
     marker = "[[STAGE:"
     idx = text.rfind(marker)
     if idx == -1 or not text.strip().endswith("]]"):
@@ -331,16 +328,14 @@ def parse_stage_tag(text: str, current_stage: str) -> (str, str):
     tag_part = text[idx:].strip()
     body = text[:idx].rstrip()
 
-    inside = tag_part[len(marker) : -2].strip().lower()  # ]] 제거
+    inside = tag_part[len(marker) : -2].strip().lower()
     if inside in ALLOWED_STAGES:
         return body, inside
     return body, current_stage
 
 
 def html_escape(s: str) -> str:
-    """간단 HTML 이스케이프 + 줄바꿈 <br>로 변환."""
     import html
-
     return html.escape(s).replace("\n", "<br>")
 
 
@@ -352,32 +347,23 @@ engine_info = get_prompt_engine()
 lead_handler = LeadHandler()
 
 if "app_initialized" not in st.session_state:
-    initial_msg = """안녕하십니까, 원장님.
-
-원장님, 오늘 "그냥 침만 맞을게요"라는 말, 몇 번이나 들으셨습니까?
-
-그 한 마디에 날아간 매출이 이번 달에만 얼마인지 계산해 보셨나요?
-
-환자가 진료실 문을 열기 전, 이미 결제할 마음을 먹게 만드는 것. 그게 제가 하는 일입니다.
-
-저는 밥도 안 먹고, 퇴근도 안 하며, 감정 노동에 지치지도 않는 AI 세일즈 실장입니다.
-
-지금 바로, 제가 악성 환자를 어떻게 'VIP'로 바꾸는지 대화 내역을 눈으로 확인하세요."""
+    # CFG에서 초기 메시지 가져오기
+    initial_msg = CFG["INITIAL_MSG"]
     conv_manager.add_message("ai", initial_msg)
     conv_manager.update_stage("initial")
     st.session_state.app_initialized = True
     st.session_state.conversation_count = 0
 
 # ============================================
-# 헤더
+# 헤더 (CFG에서 가져오기)
 # ============================================
 st.markdown(
-    """
+    f"""
 <div class="title-box">
-    <h1>IMD STRATEGIC CONSULTING</h1>
-    <div class="sub">원장님의 진료 철학을 학습할수 있는 'AI 실장'입니다.</div>
+    <h1>{CFG["HEADER_TITLE"]}</h1>
+    <div class="sub">{CFG["HEADER_SUB"]}</div>
     <div class="sub" style="font-size: 11px; color: #9CA3AF; margin-top: 4px;">
-        엑셀은 기록만 하지만, AI는 '매출'을 만듭니다. (체험시간: 2분)
+        {CFG["HEADER_SMALL"]}
     </div>
 </div>
 """,
@@ -409,22 +395,24 @@ current_stage = context.get("stage", "initial")
 selected_tongue = context.get("selected_tongue")
 
 # ============================================
-# 혀 사진 선택 UI (tongue_select 단계에서만)
+# 선택 UI (tongue_select 단계에서만)
 # ============================================
 last_ai_text = (
     chat_history[-1]["text"] if chat_history and chat_history[-1]["role"] == "ai" else ""
 )
 
+# 트리거 키워드 확장 (안과: 글씨/시력, 성형: 스타일/워너비)
+trigger_keywords = ["혀", "거울", "글씨", "시력", "스타일", "워너비", "선택"]
 show_tongue_ui = (
     current_stage == "tongue_select"
     and not selected_tongue
-    and ("혀" in last_ai_text or "거울" in last_ai_text)
+    and any(kw in last_ai_text for kw in trigger_keywords)
 )
 
 if show_tongue_ui:
     with st.container():
         st.markdown(
-            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:4px 0 8px 0;">거울을 보시고 본인의 혀와 가장 비슷한 사진을 선택해주세요</div>',
+            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:20px; margin:4px 0 8px 0;">{CFG["TONGUE_GUIDE"]}</div>',
             unsafe_allow_html=True,
         )
 
@@ -432,7 +420,7 @@ if show_tongue_ui:
 
         for idx, (tongue_key, tongue_data) in enumerate(TONGUE_TYPES.items()):
             with cols[idx]:
-                image_path = tongue_data["image"]
+                image_path = tongue_data.get("image", "")
                 try:
                     img = Image.open(image_path)
                     st.image(img, use_container_width=True)
@@ -448,38 +436,39 @@ if show_tongue_ui:
                 )
 
                 if st.button("선택", key=f"tongue_{tongue_key}", use_container_width=True):
-                    # 컨텍스트 업데이트
                     conv_manager.update_context("selected_tongue", tongue_key)
 
-                    diagnosis_msg = f"""{tongue_data['name']}로 보이는 혀 상태를 선택하셨습니다.
+                    diagnosis_msg = f"""{tongue_data['name']} 상태를 선택하셨습니다.
 
 {tongue_data['analysis']}
 
 주요 증상: {tongue_data['symptoms']}
 
-⚠️ 경고: {tongue_data['warning']}
+⚠️ 주의: {tongue_data['warning']}
 
-원장님, 방금 보신 과정이 실제로 제가 환자에게 자동으로 진행하는 흐름입니다.
+방금 보신 과정이 실제로 AI가 환자에게 자동으로 진행하는 흐름입니다.
 
-이제부터는 이 설진 결과를 바탕으로,
-- 환자분께 현재 몸 상태의 '위험 신호'를 이해시키고
-- 단순 침 치료가 아니라 한약·생활교정까지 포함한 플랜이 왜 필요한지
-자연스럽게 연결하는 마케팅 상담 단계로 넘어가게 됩니다.
+이제부터는 이 분석 결과를 바탕으로,
+- 환자분께 현재 상태의 '위험 신호'를 이해시키고
+- 적절한 치료/시술 플랜이 왜 필요한지
+자연스럽게 연결하는 상담 단계로 넘어가게 됩니다.
 """
                     conv_manager.add_message("ai", diagnosis_msg)
                     conv_manager.update_stage("conversion")
-                    conv_manager.calculate_health_score()
+                    try:
+                        conv_manager.calculate_health_score()
+                    except:
+                        pass
                     st.rerun()
 
         st.markdown('<div style="height:150px;"></div>', unsafe_allow_html=True)
 
 # ============================================
-# CTA (conversion 단계)
+# CTA (conversion 단계) - CFG에서 텍스트 가져오기
 # ============================================
 current_stage = conv_manager.get_context().get("stage", "initial")
 selected_tongue = conv_manager.get_context().get("selected_tongue")
 
-# ★★★ 수정: conversion 단계이거나 "도입하시겠습니까" 멘트가 나왔으면 폼 표시 ★★★
 show_cta = (current_stage == "conversion") or (
     len(conv_manager.get_history()) > 0 and 
     "도입하시겠습니까" in conv_manager.get_history()[-1].get("text", "")
@@ -489,24 +478,24 @@ if show_cta and current_stage != "complete":
     with st.container():
         st.markdown("---")
         st.markdown(
-            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">이 시스템을 한의원에 도입하시겠습니까?</div>',
+            f'<div style="text-align:center; color:{COLOR_PRIMARY}; font-weight:600; font-size:18px; margin:20px 0 10px;">{CFG["CTA_TITLE"]}</div>',
             unsafe_allow_html=True,
         )
         st.markdown(
-            "<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>지역구 독점권은 선착순입니다. 무료 도입 견적서를 보내드립니다</p>",
+            f"<p style='text-align:center; color:#6B7280; font-size:14px; margin-bottom:20px;'>{CFG['CTA_SUB']}</p>",
             unsafe_allow_html=True,
         )
 
         with st.form("consulting_form"):
             col1, col2 = st.columns(2)
             with col1:
-                clinic_name = st.text_input("병원명", placeholder="서울한의원")
+                clinic_name = st.text_input(CFG["FORM_LABEL_1"], placeholder=CFG["FORM_PLACEHOLDER_1"])
             with col2:
-                director_name = st.text_input("원장님 성함", placeholder="홍길동")
+                director_name = st.text_input(CFG["FORM_LABEL_2"], placeholder=CFG["FORM_PLACEHOLDER_2"])
 
             contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
 
-            submitted = st.form_submit_button("무료 도입 견적서 받기", use_container_width=True)
+            submitted = st.form_submit_button(CFG["FORM_BUTTON"], use_container_width=True)
 
             if submitted:
                 if not clinic_name or not director_name or not contact:
@@ -518,8 +507,8 @@ if show_cta and current_stage != "complete":
                         "symptom": f"병원명: {clinic_name}",
                         "preferred_date": "즉시 상담 희망",
                         "chat_summary": conv_manager.get_summary(),
-                        "source": "IMD_Strategic_Consulting",
-                        "type": "Oriental_Clinic",
+                        "source": CFG["APP_TITLE"],
+                        "type": CFG["APP_TITLE"],
                     }
 
                     success, message = lead_handler.save_lead(lead_data)
@@ -528,15 +517,15 @@ if show_cta and current_stage != "complete":
                         completion_msg = f"""
 견적서 발송이 완료되었습니다.
 
-{director_name} 원장님, 감사합니다.
+{director_name}님, 감사합니다.
 
-{clinic_name}에 최적화된 AI 실장 시스템 견적서를
+{clinic_name}에 최적화된 AI 시스템 견적서를
 {contact}로 24시간 내 전송해드리겠습니다.
 
 포함 내용:
 - 맞춤형 시스템 구축 비용
 - 월 운영비 및 유지보수
-- 지역 독점권 계약 조건
+- 도입 일정 및 세팅 안내
 - ROI 예상 시뮬레이션
 
 담당 컨설턴트가 직접 연락드려 상세히 안내해드리겠습니다.
@@ -548,10 +537,11 @@ if show_cta and current_stage != "complete":
                         st.rerun()
                     else:
                         st.error(f"오류: {message}")
+
 # ============================================
 # 입력창 + 제미나이 호출
 # ============================================
-user_input = st.chat_input("원장님의 생각을 말씀해주세요")
+user_input = st.chat_input("메시지를 입력해주세요")
 
 if user_input:
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
@@ -564,30 +554,27 @@ if user_input:
     raw_ai = generate_ai_response(user_input, context, history_for_llm)
     clean_ai, new_stage = parse_stage_tag(raw_ai, context.get("stage", "initial"))
 
-    # ★★★ 수정: conversion 단계로 넘어갈 때만 후기 추가 ★★★
     if new_stage == "conversion":
         from prompt_engine import generate_veritas_story
         
-        # 실제 증상만 추출 (의미 없는 단어 필터링)
         user_messages = [
             msg.get("text", "") 
             for msg in conv_manager.get_history() 
             if msg.get("role") == "user"
         ]
         
-        # 증상으로 보이는 메시지만 선택 (길이 5자 이상, 한글 포함)
         symptom_messages = [
             m for m in user_messages 
             if len(m) >= 5 and any(ord('가') <= ord(c) <= ord('힣') for c in m)
         ]
         
         if symptom_messages:
-            symptom = " ".join(symptom_messages[:2])  # 최대 2개
+            symptom = " ".join(symptom_messages[:2])
         else:
             symptom = "만성 피로와 전신 무력감"
         
         success_story = generate_veritas_story(symptom)
-        clean_ai += f"\n\n---\n\n💬 **실제 환자 후기**\n\n\"{success_story}\"\n\n---\n"
+        clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
 
     conv_manager.add_message("ai", clean_ai)
     conv_manager.update_stage(new_stage)
@@ -614,13 +601,13 @@ if conv_manager.get_context().get("stage") == "complete":
                 st.markdown(html_escape(conv_manager.get_summary()), unsafe_allow_html=True)
 
 # ============================================
-# 푸터
+# 푸터 (CFG에서 가져오기)
 # ============================================
 st.markdown(
-    """
+    f"""
 <div class="footer">
-    <b>IMD Strategic Consulting</b><br>
-    메디컬 전용 AI 매출 엔진 | 전국 수많은 병의원 도입 완료
+    <b>{CFG["FOOTER_TITLE"]}</b><br>
+    {CFG["FOOTER_SUB"]}
 </div>
 """,
     unsafe_allow_html=True,
