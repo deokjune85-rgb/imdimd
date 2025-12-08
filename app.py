@@ -12,10 +12,11 @@ from PIL import Image
 from conversation_manager import get_conversation_manager
 from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
+
+# config에서 함수와 전역 변수 가져오기
 from config import (
-    CFG,
-    CLIENT_ID,
-    TONGUE_TYPES,
+    get_client_id_from_query,
+    get_config,
     COLOR_PRIMARY,
     COLOR_BG,
     COLOR_TEXT,
@@ -25,7 +26,14 @@ from config import (
 )
 
 # ============================================
-# 페이지 설정 (CFG에서 가져오기)
+# [중요] 매 실행마다 CLIENT_ID와 설정 다시 로드
+# ============================================
+CLIENT_ID = get_client_id_from_query()
+CFG = get_config(CLIENT_ID)
+TONGUE_TYPES = CFG["TONGUE_TYPES"]
+
+# ============================================
+# 페이지 설정
 # ============================================
 st.set_page_config(
     page_title=CFG["APP_TITLE"],
@@ -283,7 +291,6 @@ input::placeholder, textarea::placeholder {{
         font-size: 10px !important;
         padding: 4px 2px !important;
         margin-top: 2px !important;
-        white-space: nowrap !important;
     }}
     
     div[data-testid="column"] div[style*="text-align:center"] {{
@@ -357,8 +364,12 @@ if "app_initialized" not in st.session_state or st.session_state.get("current_cl
     st.session_state.current_client = CLIENT_ID
     st.session_state.conversation_count = 0
 
+# [중요] 컨텍스트에 현재 client_id 주입 (LLM이 알 수 있게)
+conv_manager.update_context("client_id", CLIENT_ID)
+
+
 # ============================================
-# 헤더 (CFG에서 가져오기)
+# 헤더
 # ============================================
 st.markdown(
     f"""
@@ -404,7 +415,6 @@ last_ai_text = (
     chat_history[-1]["text"] if chat_history and chat_history[-1]["role"] == "ai" else ""
 )
 
-# 트리거 키워드 확장 (안과: 글씨/시력, 성형: 스타일/워너비)
 trigger_keywords = ["혀", "거울", "글씨", "시력", "스타일", "워너비", "선택"]
 show_tongue_ui = (
     current_stage == "tongue_select"
@@ -467,7 +477,7 @@ if show_tongue_ui:
         st.markdown('<div style="height:150px;"></div>', unsafe_allow_html=True)
 
 # ============================================
-# CTA (conversion 단계) - CFG에서 텍스트 가져오기
+# CTA (conversion 단계)
 # ============================================
 current_stage = conv_manager.get_context().get("stage", "initial")
 selected_tongue = conv_manager.get_context().get("selected_tongue")
@@ -554,6 +564,7 @@ if user_input:
     context = conv_manager.get_context()
     history_for_llm = conv_manager.get_history()
 
+    # AI 응답 생성 시 context를 넘겨주므로, context안의 client_id가 사용됨
     raw_ai = generate_ai_response(user_input, context, history_for_llm)
     clean_ai, new_stage = parse_stage_tag(raw_ai, context.get("stage", "initial"))
 
@@ -576,7 +587,8 @@ if user_input:
         else:
             symptom = "만성 피로와 전신 무력감"
         
-        success_story = generate_veritas_story(symptom)
+        # [수정] story 생성 시에도 CLIENT_ID 전달
+        success_story = generate_veritas_story(symptom, client_id=CLIENT_ID)
         clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
 
     conv_manager.add_message("ai", clean_ai)
@@ -604,7 +616,7 @@ if conv_manager.get_context().get("stage") == "complete":
                 st.markdown(html_escape(conv_manager.get_summary()), unsafe_allow_html=True)
 
 # ============================================
-# 푸터 (CFG에서 가져오기)
+# 푸터
 # ============================================
 st.markdown(
     f"""
