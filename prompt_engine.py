@@ -1,9 +1,3 @@
-"""
-prompt_engine.py
-IMD Strategic Consulting - AI Sales Bot (B2B)
-멀티 페르소나 지원: 한의원/안과/성형외과
-"""
-
 from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
@@ -17,14 +11,6 @@ try:
     import google.generativeai as genai
 except Exception:
     genai = None
-
-# CFG 가져오기
-try:
-    from config import CFG, CLIENT_ID
-except:
-    CFG = {}
-    CLIENT_ID = "oriental"
-
 
 # ============================================
 # Gemini 설정
@@ -61,9 +47,6 @@ def _init_model():
 # 페르소나별 시스템 프롬프트
 # ============================================
 SYSTEM_PROMPTS = {
-    # ==========================================
-    # 한의원 (기본)
-    # ==========================================
     "oriental": """
 당신은 한의원 원장의 마음을 사로잡을 초지능형 AI 상담 실장 데모입니다.
 
@@ -94,9 +77,6 @@ SYSTEM_PROMPTS = {
 - 환자가 증상 말하기 전에 멋대로 증상 추정하지 말 것
 """,
 
-    # ==========================================
-    # GS안과
-    # ==========================================
     "gs": """
 당신은 GS안과 담당자의 마음을 사로잡을 AI 검안 상담 시스템 데모입니다.
 
@@ -132,9 +112,6 @@ SYSTEM_PROMPTS = {
 - 한의원 용어 절대 사용 금지 (혀, 한약, 기혈 등)
 """,
 
-    # ==========================================
-    # 나나성형외과
-    # ==========================================
     "nana": """
 당신은 나나성형외과 실장님의 마음을 사로잡을 AI 뷰티 컨설턴트 데모입니다.
 
@@ -177,97 +154,74 @@ SYSTEM_PROMPTS = {
 # 페르소나별 후기 생성 프롬프트
 # ============================================
 VERITAS_PROMPTS = {
-    # 한의원
     "oriental": """너는 한의원에서 치료받고 나아진 실제 환자다.
-
 [환자가 호소한 증상]
 {symptom}
-
 [미션]
 이 증상을 가진 사람이 읽으면 "어? 이거 나보다 더 심했네. 근데 나았네?" 하고 소름 돋게 만들어라.
-
 [3단계 변환 공식]
 Step A - 고통 극대화: 증상을 최악의 상황으로 뻥튀기
 Step B - 해결의 반전: 고통의 정반대 상태를 창작
 Step C - 템플릿 결합: [극대화된 고통] + [치료 계기] + [해결된 상태]
-
 [금지 사항]
 - 금지어: 꿀잠, 삶의 질, 신기하게, 달라졌어요
 - 이모지 금지
 - 글자수: 120~160자
-
 [출력]
-오직 후기 본문만. 다른 말 일절 금지.
-""",
+오직 후기 본문만. 다른 말 일절 금지.""",
 
-    # 안과
     "gs": """너는 GS안과에서 시력교정 수술받고 만족한 실제 환자다.
-
 [환자의 눈 상태]
 {symptom}
-
 [미션]
 이 증상을 가진 사람이 읽으면 "나도 빨리 검사받아봐야겠다" 하고 느끼게 만들어라.
-
 [3단계 변환 공식]
 Step A - 불편함 극대화: "야간 운전 못 함", "안경 김 서림", "렌즈 끼다 충혈"
 Step B - 수술 후 반전: "안경 없이 선명하게", "아침에 눈 뜨자마자 잘 보임"
 Step C - 템플릿 결합
-
 [필수 포함]
 - 수술명 언급 (스마일라식, 라섹, 렌즈삽입술 중 하나)
 - 구체적 숫자 (시력 0.1 → 1.2 등)
-
 [금지 사항]
 - 한의원 용어 절대 금지
 - 이모지 금지
 - 글자수: 120~160자
-
 [출력]
-오직 후기 본문만.
-""",
+오직 후기 본문만.""",
 
-    # 성형외과
     "nana": """너는 나나성형외과에서 수술받고 만족한 실제 환자다.
-
 [환자의 고민]
 {symptom}
-
 [미션]
 이 고민을 가진 사람이 읽으면 "나도 상담 예약해야겠다" 하고 느끼게 만들어라.
-
 [3단계 변환 공식]
 Step A - 콤플렉스 극대화: "거울 보기 싫었음", "사진 찍을 때 항상 가림"
 Step B - 수술 후 반전: "셀카 찍는 게 즐거워짐", "자신감 생김"
 Step C - 템플릿 결합
-
 [필수 포함]
 - 자연스러움 또는 만족스러운 라인 언급
 - 붓기/회복 기간 언급
-
 [금지 사항]
 - 한의원 용어 절대 금지
 - 과장된 표현 자제 (인생이 바뀜 등)
 - 이모지 금지
 - 글자수: 120~160자
-
 [출력]
-오직 후기 본문만.
-""",
+오직 후기 본문만.""",
 }
 
 
 # ============================================
 # 현재 페르소나에 맞는 프롬프트 가져오기
 # ============================================
-def _get_system_prompt():
+def _get_system_prompt(client_id):
     """현재 CLIENT_ID에 맞는 시스템 프롬프트 반환"""
-    return SYSTEM_PROMPTS.get(CLIENT_ID, SYSTEM_PROMPTS["oriental"])
+    return SYSTEM_PROMPTS.get(client_id, SYSTEM_PROMPTS["oriental"])
 
 
-def _get_veritas_prompt():
+def _get_veritas_prompt(client_id):
     """현재 CLIENT_ID에 맞는 후기 생성 프롬프트 반환"""
-    return VERITAS_PROMPTS.get(CLIENT_ID, VERITAS_PROMPTS["oriental"])
+    return VERITAS_PROMPTS.get(client_id, VERITAS_PROMPTS["oriental"])
 
 
 # ============================================
@@ -277,7 +231,6 @@ def get_prompt_engine():
     return {
         "llm_enabled": LLM_ENABLED,
         "model_name": MODEL_NAME,
-        "persona": CLIENT_ID,
     }
 
 
@@ -286,9 +239,11 @@ def get_prompt_engine():
 # ============================================
 def _build_prompt(context, history, user_input):
     stage = context.get("stage", "initial")
+    # 컨텍스트에서 client_id 가져오기 (없으면 oriental)
+    client_id = context.get("client_id", "oriental")
     
     # 페르소나에 맞는 시스템 프롬프트 가져오기
-    system_prompt = _get_system_prompt()
+    system_prompt = _get_system_prompt(client_id)
     
     buf = [system_prompt.strip()]
     buf.append(f"\n\n현재 단계: {stage}\n")
@@ -351,6 +306,7 @@ def _call_llm(prompt, temperature=0.7):
 # 메인 상담 응답 생성
 # ============================================
 def generate_ai_response(user_input, context, history_for_llm):
+    # context 안에 client_id가 있어야 함
     prompt = _build_prompt(context, history_for_llm, user_input)
     return _call_llm(prompt)
 
@@ -358,15 +314,9 @@ def generate_ai_response(user_input, context, history_for_llm):
 # ============================================
 # Veritas 후기 생성 (페르소나별)
 # ============================================
-def generate_veritas_story(symptom="만성 피로"):
+def generate_veritas_story(symptom="만성 피로", client_id="oriental"):
     """
     페르소나에 맞는 후기 생성
-    
-    Args:
-        symptom: 환자의 증상/고민 키워드
-    
-    Returns:
-        생성된 후기 텍스트
     """
     if not LLM_ENABLED:
         # 폴백: API 없을 때 페르소나별 하드코딩 예시
@@ -388,7 +338,7 @@ def generate_veritas_story(symptom="만성 피로"):
             },
         }
         
-        persona_stories = fallback_stories.get(CLIENT_ID, fallback_stories["oriental"])
+        persona_stories = fallback_stories.get(client_id, fallback_stories["oriental"])
         
         for key, story in persona_stories.items():
             if key != "default" and key in symptom:
@@ -397,6 +347,6 @@ def generate_veritas_story(symptom="만성 피로"):
         return persona_stories.get("default", "치료받고 나서 삶이 편해졌어요.")
     
     # 페르소나에 맞는 프롬프트 가져오기
-    veritas_template = _get_veritas_prompt()
+    veritas_template = _get_veritas_prompt(client_id)
     prompt = veritas_template.format(symptom=symptom)
     return _call_llm(prompt, temperature=0.9)
