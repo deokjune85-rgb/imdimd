@@ -1,22 +1,4 @@
-"""
-config.py
-IMD Strategic Consulting - 멀티 페르소나 통합 설정
-URL 파라미터로 분기: ?client=gs (안과), ?client=nana (성형), 기본(한의원)
-"""
-
 import streamlit as st
-
-# ============================================
-# URL 파라미터 읽기
-# ============================================
-try:
-    query_params = st.query_params
-    CLIENT_ID = query_params["client"]
-except:
-    CLIENT_ID = "oriental"
-
-if isinstance(CLIENT_ID, list):
-    CLIENT_ID = CLIENT_ID[0]
 
 # ============================================
 # 공통 디자인 컬러
@@ -310,17 +292,21 @@ AI가 환자의 '워너비 스타일'을 파악하고 내원까지 시키는 과
     },
 }
 
-
 # ============================================
-# 현재 설정 로드 함수
+# URL 파라미터 파싱 헬퍼 함수
 # ============================================
-def get_config():
-    """현재 CLIENT_ID에 맞는 설정 반환"""
-    return DATA.get(CLIENT_ID, DATA["oriental"])
+def get_client_id_from_query():
+    try:
+        query_params = st.query_params
+        if "client" in query_params:
+            val = query_params["client"]
+            if isinstance(val, list):
+                return val[0]
+            return val
+    except:
+        pass
+    return "oriental"
 
-
-# 편의를 위한 현재 설정 변수
-CFG = get_config()
-APP_TITLE = CFG["APP_TITLE"]
-APP_ICON = CFG["APP_ICON"]
-TONGUE_TYPES = CFG["TONGUE_TYPES"]
+def get_config(client_id):
+    """주어진 client_id에 맞는 설정 반환"""
+    return DATA.get(client_id, DATA["oriental"])
