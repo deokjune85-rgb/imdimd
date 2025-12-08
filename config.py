@@ -11,10 +11,10 @@ import streamlit as st
 # ============================================
 try:
     query_params = st.query_params
+    CLIENT_ID = query_params["client"]
 except:
-    query_params = {}
+    CLIENT_ID = "oriental"
 
-CLIENT_ID = query_params.get("client", "oriental")
 if isinstance(CLIENT_ID, list):
     CLIENT_ID = CLIENT_ID[0]
 
