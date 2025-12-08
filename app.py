@@ -14,6 +14,7 @@ from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
 from config import (
     CFG,
+    CLIENT_ID,
     TONGUE_TYPES,
     COLOR_PRIMARY,
     COLOR_BG,
@@ -340,18 +341,20 @@ def html_escape(s: str) -> str:
 
 
 # ============================================
-# 초기화
+# 초기화 (CLIENT_ID 변경 시 리셋)
 # ============================================
 conv_manager = get_conversation_manager()
 engine_info = get_prompt_engine()
 lead_handler = LeadHandler()
 
-if "app_initialized" not in st.session_state:
-    # CFG에서 초기 메시지 가져오기
+# 클라이언트가 바뀌었거나 첫 방문이면 대화 리셋
+if "app_initialized" not in st.session_state or st.session_state.get("current_client") != CLIENT_ID:
+    conv_manager.reset_conversation()
     initial_msg = CFG["INITIAL_MSG"]
     conv_manager.add_message("ai", initial_msg)
     conv_manager.update_stage("initial")
     st.session_state.app_initialized = True
+    st.session_state.current_client = CLIENT_ID
     st.session_state.conversation_count = 0
 
 # ============================================
