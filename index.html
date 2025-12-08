@@ -21,11 +21,32 @@
             height: calc(100% + 40px);
             border: none;
             display: block;
-            margin-bottom: -37px;
+            margin-bottom: -40px;
         }
     </style>
 </head>
 <body>
-    <iframe src="https://imdimd.streamlit.app/?embed=true" allowfullscreen></iframe>
+    <iframe id="app-frame" src="https://imdimd.streamlit.app/?embed=true"></iframe>
+    <script>
+        // URL 파라미터를 iframe에 전달
+        const query = window.location.search;
+        const iframe = document.getElementById("app-frame");
+        
+        if (query) {
+            // ?client=gs 있으면 → iframe에도 붙여줌
+            iframe.src = "https://imdimd.streamlit.app/" + query + "&embed=true";
+        }
+    </script>
 </body>
 </html>
+```
+
+---
+
+## 작동 원리
+```
+converdream.co.kr?client=gs
+    ↓ (JS가 파라미터 감지)
+iframe src = "imdimd.streamlit.app/?client=gs&embed=true"
+    ↓ (Streamlit config.py가 파라미터 읽음)
+안과 모드 로드
