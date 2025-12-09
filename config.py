@@ -112,9 +112,9 @@ DATA = {
     # 2. [GS안과] (?client=gs)
     # ==========================================
     "gs": {
-        "APP_TITLE": "GS안과 AI 정밀 검안 센터",
+        "APP_TITLE": "안과 AI 정밀 검안 센터",
         "APP_ICON": "👁️",
-        "HEADER_TITLE": "GS안과 AI 정밀 검안 센터",
+        "HEADER_TITLE": "안과 AI 정밀 검안 센터",
         "HEADER_SUB": "단순 가격 문의를 '검안 예약'으로 바꾸는 AI 솔루션",
         "HEADER_SMALL": "'라식 얼마예요?' 묻고 나가는 환자를 잡아드립니다. (체험시간: 2분)",
         "INITIAL_MSG": """안녕하세요, 담당자님.
@@ -127,11 +127,11 @@ DATA = {
 
 지금부터 '시력이 떨어진 환자'가 되어 대화를 진행해보세요.""",
         "TONGUE_GUIDE": "스마트폰을 멀리 두고, 아래 글씨가 어떻게 보이는지 선택해주세요",
-        "CTA_TITLE": "이 AI 시스템을 GS안과에 도입하시겠습니까?",
+        "CTA_TITLE": "이 AI 시스템을 안과에 도입하시겠습니까?",
         "CTA_SUB": "야간/주말 문의 자동 응대로 검안 예약률을 높여드립니다",
         "FORM_LABEL_1": "병원명",
         "FORM_LABEL_2": "담당자 성함",
-        "FORM_PLACEHOLDER_1": "GS안과",
+        "FORM_PLACEHOLDER_1": "안과",
         "FORM_PLACEHOLDER_2": "김담당",
         "FORM_BUTTON": "무료 도입 견적서 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
