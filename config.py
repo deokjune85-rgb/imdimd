@@ -15,9 +15,43 @@ COLOR_BORDER = "#E5E7EB"
 # ============================================
 DATA = {
     # ==========================================
-    # 1. [기본] 한의원 (?client=oriental 또는 기본)
+    # 0. [메인] IMD 회사 소개 (?client= 없거나 root)
     # ==========================================
-    "oriental": {
+    "root": {
+        "APP_TITLE": "IMD Architecture Group",
+        "APP_ICON": "🏛️",
+        "HEADER_TITLE": "IMD ARCHITECTURE GROUP",
+        "HEADER_SUB": "매출을 설계하는 비즈니스 아키텍처 그룹",
+        "HEADER_SMALL": "홈페이지가 아닌, '매출 시스템'을 구축합니다.",
+        "INITIAL_MSG": """반갑습니다. 비즈니스 아키텍처 그룹 IMD입니다.
+
+대부분의 방문자는 '홈페이지 견적'을 물어보러 오지만,
+결국 **'매출 시스템'**을 계약하고 나갑니다.
+
+무엇을 설계해 드릴까요?""",
+        "TONGUE_GUIDE": "",
+        "CTA_TITLE": "IMD 시스템 도입 문의",
+        "CTA_SUB": "맞춤형 매출 시스템 설계를 시작합니다",
+        "FORM_LABEL_1": "회사/병원명",
+        "FORM_LABEL_2": "담당자 성함",
+        "FORM_PLACEHOLDER_1": "회사명 또는 병원명",
+        "FORM_PLACEHOLDER_2": "홍길동",
+        "FORM_BUTTON": "무료 컨설팅 신청",
+        "FOOTER_TITLE": "IMD Architecture Group",
+        "FOOTER_SUB": "매출을 설계하는 비즈니스 아키텍처 그룹",
+        "TONGUE_TYPES": {},
+        "IS_ROOT": True,
+        "DEMO_BUTTONS": {
+            "hanbang": {"label": "🏥 한의원 데모", "desc": "AI 수석 실장"},
+            "gs": {"label": "👁️ 안과 데모", "desc": "AI 검안 시스템"},
+            "nana": {"label": "✨ 성형외과 데모", "desc": "AI 뷰티 컨설턴트"},
+        },
+    },
+
+    # ==========================================
+    # 1. [한의원] (?client=hanbang)
+    # ==========================================
+    "hanbang": {
         "APP_TITLE": "IMD Strategic Consulting",
         "APP_ICON": "💼",
         "HEADER_TITLE": "IMD STRATEGIC CONSULTING",
@@ -296,6 +330,7 @@ AI가 환자의 '워너비 스타일'을 파악하고 내원까지 시키는 과
 # URL 파라미터 파싱 헬퍼 함수
 # ============================================
 def get_client_id_from_query():
+    """URL 파라미터에서 client_id 추출, 없으면 root 반환"""
     try:
         query_params = st.query_params
         if "client" in query_params:
@@ -305,8 +340,9 @@ def get_client_id_from_query():
             return val
     except:
         pass
-    return "oriental"
+    return "root"  # 기본값을 root로 변경
+
 
 def get_config(client_id):
     """주어진 client_id에 맞는 설정 반환"""
-    return DATA.get(client_id, DATA["oriental"])
+    return DATA.get(client_id, DATA["root"])
