@@ -19,10 +19,10 @@ class ConversationManager:
         
         if 'user_context' not in st.session_state:
             st.session_state.user_context = {
-                'user_type': '한의원',        # 기본값
-                'selected_symptom': None,     # 🔋/🤕/🥣/🌿
-                'selected_tongue': None,      # 담백설/치흔설/황태설/자색설
-                'health_score': 0,            # 레이더 차트 종합 점수
+                'user_type': 'visitor',       # 방문자 타입
+                'selected_symptom': None,     # 선택한 증상/항목
+                'selected_tongue': None,      # 선택한 혀/스타일
+                'health_score': 0,            # 종합 점수
                 'pain_point': None,           # 주요 고민
                 'urgency': None,              # 긴급도
                 'budget_sense': None,         # 가격 민감도
@@ -177,30 +177,16 @@ class ConversationManager:
         Returns:
             종합 건강 점수 (0-100)
         """
-        from config import TONGUE_TYPES
-        
-        tongue = st.session_state.user_context.get('selected_tongue')
-        if not tongue or tongue not in TONGUE_TYPES:
-            return 50  # 기본값
-        
-        scores = TONGUE_TYPES[tongue]['scores']
-        # 5개 항목 평균
-        avg_score = sum(scores.values()) / len(scores)
-        
-        # 컨텍스트에 저장
-        st.session_state.user_context['health_score'] = int(avg_score)
-        
-        return int(avg_score)
+        # 단순화된 버전 - scores가 없으면 기본값 반환
+        return st.session_state.user_context.get('health_score', 50)
     
     def is_ready_for_conversion(self) -> bool:
         """
         리드 전환 타이밍 판단
-        - 레이더 차트까지 본 후 (result_view 단계)
         """
         context = st.session_state.user_context
         stage = context.get('stage', 'initial')
         
-        # result_view 단계이거나 그 이후면 전환 가능
         return stage in ['result_view', 'conversion', 'complete']
     
     def update_stage(self, new_stage: str):
@@ -235,7 +221,7 @@ class ConversationManager:
         """대화 초기화 (처음부터 다시)"""
         st.session_state.chat_history = []
         st.session_state.user_context = {
-            'user_type': '한의원',
+            'user_type': 'visitor',
             'selected_symptom': None,
             'selected_tongue': None,
             'health_score': 0,
