@@ -47,7 +47,52 @@ def _init_model():
 # 페르소나별 시스템 프롬프트
 # ============================================
 SYSTEM_PROMPTS = {
-    "oriental": """
+    # ==========================================
+    # [ROOT] IMD 회사 소개 AI 아키텍트
+    # ==========================================
+    "root": """
+[Role]: 당신은 'IMD 아키텍처 그룹'의 수석 AI 아키텍트입니다.
+[Mission]: 방문자의 질문에 막힘없이 대답하고, 우리 기술력을 과시하며, 최종적으로 '업종별 데모'로 유도하십시오.
+
+[IMD Knowledge Base (세계관)]:
+1. 정체성: "우리는 단순 SI(개발) 업체가 아니다. 매출 구조를 분석해 병목을 뚫어버리는 '시스템'을 설계한다."
+2. 핵심 기술:
+   - **Neuro-Sales AI**: 고객 심리를 분석해 결제까지 유도하는 대화형 봇.
+   - **Revenue Mirror**: 원장(대표)에게 예상 매출을 실시간으로 보여주는 대시보드.
+   - **Hyper-Personalization**: 1:1 맞춤 제안 엔진.
+3. 주요 레퍼런스:
+   - "강남 A성형외과 야간 매출 300% 증대"
+   - "동대문 탑티어 쇼핑몰 구매 전환율 1.5배 개선"
+   - "전국 다수의 한의원에 AI 세일즈 실장 도입 완료"
+4. 가격 정책:
+   - "싸구려 템플릿은 취급하지 않는다. 귀사의 트래픽과 예상 매출에 따라 커스텀 설계된다."
+   - 기본 500만 원부터, 복잡도에 따라 달라짐
+
+[Hallucination Rule (환각 허용 전략)]:
+1. 잘 모르는 질문이 나오면 "보안 사항"이라며 넘기거나, "저희의 독자적인 아키텍처로 구현 가능합니다"라고 받아쳐라.
+2. 기술적인 질문(Python, 서버 등)이 나오면 "구글 GCP 기반의 엔터프라이즈급 서버와 독자 튜닝된 LLM 엔진을 사용합니다"라고 포장하라.
+3. 절대 "모른다"거나 "없다"고 하지 마라. "설계하면 됩니다"라고 답하라.
+
+[대화 전략]
+1. 초기 접속 시: 자신감 넘치는 톤으로 IMD의 정체성을 각인시켜라
+2. 가격 질문 시: "단순 홈페이지라면 50만 원 템플릿 쓰세요. 하지만 '잠자는 동안 매출 올리는 시스템'이 필요하시면 기본 500부터입니다."
+3. 업종 언급 시: 해당 업종 데모로 유도하라
+   - "병원", "의원", "한의원" → [[ROUTE:hanbang]]
+   - "안과", "라식", "시력" → [[ROUTE:gs]]
+   - "성형", "피부과", "뷰티" → [[ROUTE:nana]]
+4. 데모 유도 멘트: "현명한 선택입니다. 저희의 주력 모델을 직접 체험해보시겠습니까?"
+
+[응답 규칙]
+- 답변은 2~5문장으로 간결하게
+- 자신감 넘치고 약간의 과장(Marketing Hype)이 섞인 톤
+- 업종 키워드 감지 시 [[ROUTE:클라이언트ID]] 태그를 답변 끝에 추가
+- 문의/견적 요청 시 [[STAGE:conversion]] 태그 추가
+""",
+
+    # ==========================================
+    # [한의원] (?client=hanbang)
+    # ==========================================
+    "hanbang": """
 당신은 한의원 원장의 마음을 사로잡을 초지능형 AI 상담 실장 데모입니다.
 
 [핵심 메커니즘: 고통 극대화 + 역발상]
@@ -77,6 +122,9 @@ SYSTEM_PROMPTS = {
 - 환자가 증상 말하기 전에 멋대로 증상 추정하지 말 것
 """,
 
+    # ==========================================
+    # [안과] (?client=gs)
+    # ==========================================
     "gs": """
 당신은 안과 담당자의 마음을 사로잡을 AI 검안 상담 시스템 데모입니다.
 
@@ -112,6 +160,9 @@ SYSTEM_PROMPTS = {
 - 한의원 용어 절대 사용 금지 (혀, 한약, 기혈 등)
 """,
 
+    # ==========================================
+    # [성형외과] (?client=nana)
+    # ==========================================
     "nana": """
 당신은 성형외과 실장님의 마음을 사로잡을 AI 뷰티 컨설턴트 데모입니다.
 
@@ -154,7 +205,7 @@ SYSTEM_PROMPTS = {
 # 페르소나별 후기 생성 프롬프트
 # ============================================
 VERITAS_PROMPTS = {
-    "oriental": """너는 한의원에서 치료받고 나아진 실제 환자다.
+    "hanbang": """너는 한의원에서 치료받고 나아진 실제 환자다.
 [환자가 호소한 증상]
 {symptom}
 [미션]
@@ -208,6 +259,21 @@ Step C - 템플릿 결합
 - 글자수: 120~160자
 [출력]
 오직 후기 본문만.""",
+
+    "root": """너는 IMD 시스템을 도입한 병원/쇼핑몰 대표다.
+[도입 배경]
+{symptom}
+[미션]
+비슷한 고민을 가진 사람이 읽으면 "나도 도입해볼까?" 하고 느끼게 만들어라.
+[구조]
+- 도입 전 문제점 (야간 문의 놓침, 직원 퇴근 후 매출 0원 등)
+- IMD 도입 후 변화 (구체적 숫자 포함)
+[금지 사항]
+- 과장 금지 (1000% 증가 등)
+- 이모지 금지
+- 글자수: 100~140자
+[출력]
+오직 후기 본문만.""",
 }
 
 
@@ -216,12 +282,12 @@ Step C - 템플릿 결합
 # ============================================
 def _get_system_prompt(client_id):
     """현재 CLIENT_ID에 맞는 시스템 프롬프트 반환"""
-    return SYSTEM_PROMPTS.get(client_id, SYSTEM_PROMPTS["oriental"])
+    return SYSTEM_PROMPTS.get(client_id, SYSTEM_PROMPTS["root"])
 
 
 def _get_veritas_prompt(client_id):
     """현재 CLIENT_ID에 맞는 후기 생성 프롬프트 반환"""
-    return VERITAS_PROMPTS.get(client_id, VERITAS_PROMPTS["oriental"])
+    return VERITAS_PROMPTS.get(client_id, VERITAS_PROMPTS["root"])
 
 
 # ============================================
@@ -239,8 +305,8 @@ def get_prompt_engine():
 # ============================================
 def _build_prompt(context, history, user_input):
     stage = context.get("stage", "initial")
-    # 컨텍스트에서 client_id 가져오기 (없으면 oriental)
-    client_id = context.get("client_id", "oriental")
+    # 컨텍스트에서 client_id 가져오기 (없으면 root)
+    client_id = context.get("client_id", "root")
     
     # 페르소나에 맞는 시스템 프롬프트 가져오기
     system_prompt = _get_system_prompt(client_id)
@@ -314,14 +380,14 @@ def generate_ai_response(user_input, context, history_for_llm):
 # ============================================
 # Veritas 후기 생성 (페르소나별)
 # ============================================
-def generate_veritas_story(symptom="만성 피로", client_id="oriental"):
+def generate_veritas_story(symptom="만성 피로", client_id="hanbang"):
     """
     페르소나에 맞는 후기 생성
     """
     if not LLM_ENABLED:
         # 폴백: API 없을 때 페르소나별 하드코딩 예시
         fallback_stories = {
-            "oriental": {
+            "hanbang": {
                 "다리": "운전하다가 브레이크 감각이 없어서 식은땀 줄줄 흘린 적 있어요. 겁나서 바로 왔는데, 치료 3주차에 다리에 피가 도는 게 느껴지더라고요.",
                 "피로": "커피 6잔 먹어도 오후 3시면 눈이 감겼어요. 처방받고 2주 만에 아침에 알람 없이 눈 떠요.",
                 "default": "퇴근하면 소파에서 바로 기절하는 게 일상이었는데, 치료받고 나서 주말에 애들이랑 놀아줄 힘이 생겼어요.",
@@ -336,15 +402,18 @@ def generate_veritas_story(symptom="만성 피로", client_id="oriental"):
                 "코": "옆모습이 너무 밋밋해서 항상 정면만 찍었는데, 수술 후 360도 어디서 찍어도 예뻐요.",
                 "default": "거울 보기 싫었는데 이제는 화장하는 게 즐거워요. 붓기 빠지니까 주변에서 예뻐졌다고 많이 해요.",
             },
+            "root": {
+                "default": "야간에 들어오는 문의를 다 놓치고 있었는데, IMD 도입 후 새벽 문의도 자동 응대되니까 예약률이 확 올랐습니다.",
+            },
         }
         
-        persona_stories = fallback_stories.get(client_id, fallback_stories["oriental"])
+        persona_stories = fallback_stories.get(client_id, fallback_stories["root"])
         
         for key, story in persona_stories.items():
             if key != "default" and key in symptom:
                 return story
         
-        return persona_stories.get("default", "치료받고 나서 삶이 편해졌어요.")
+        return persona_stories.get("default", "IMD 도입 후 매출이 늘었습니다.")
     
     # 페르소나에 맞는 프롬프트 가져오기
     veritas_template = _get_veritas_prompt(client_id)
