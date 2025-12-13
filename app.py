@@ -293,7 +293,7 @@ div[data-testid="stStatus"] p {{
 # 유틸 함수
 # ============================================
 ALLOWED_STAGES = {"initial", "symptom_explore", "sleep_check", "digestion_check", "tongue_select", "conversion", "complete"}
-ROUTE_MAP = {"hanbang": "hanbang", "gs": "gs", "nana": "nana", "law": "law", "math": "math"}
+ROUTE_MAP = {"hanbang": "hanbang", "gs": "gs", "nana": "nana", "law": "law", "math": "math", "lift": "lift"}
 
 
 def parse_response_tags(text: str, current_stage: str):
@@ -434,6 +434,7 @@ if IS_ROOT:
             "nana": ("✨ 성형외과 AI 컨설턴트 체험하기", "환자의 워너비 스타일 파악"),
             "law": ("⚖️ 법률 AI 사건 접수 체험하기", "의뢰인의 증거와 상황 파악"),
             "math": ("📐 수학학원 AI 상담 체험하기", "학부모의 고민과 연락처 확보"),
+            "lift": ("💎 피부과 AI 리프팅 진단 체험하기", "가격 문의를 시술 예약으로 전환"),
         }
         label, desc = demo_labels.get(pending, ("데모 보기", ""))
         st.markdown(f"<p style='text-align:center; color:#6B7280; font-size:13px;'>{desc}</p>", unsafe_allow_html=True)
@@ -444,13 +445,14 @@ if IS_ROOT:
 
     # 데모 목록 (하단에 항상 표시)
     with st.expander("📋 업종별 데모 바로가기", expanded=False):
-        demo_cols = st.columns(5)
+        demo_cols = st.columns(6)
         demos = [
             ("hanbang", "🏥 한의원", "AI 수석 실장"),
             ("gs", "👁️ 안과", "AI 검안 시스템"),
             ("nana", "✨ 성형외과", "AI 뷰티 컨설턴트"),
             ("law", "⚖️ 법률", "AI 사건 접수"),
-            ("math", "📐 수학학원", "AI 학습 상담"),
+            ("math", "📐 수학학원", "AI 입시 진단"),
+            ("lift", "💎 피부과", "AI 리프팅 진단"),
         ]
         for i, (cid, name, desc) in enumerate(demos):
             with demo_cols[i]:
@@ -465,7 +467,7 @@ if IS_ROOT:
 # ============================================
 if not IS_ROOT and TONGUE_TYPES:
     last_ai_text = chat_history[-1]["text"] if chat_history and chat_history[-1]["role"] == "ai" else ""
-    trigger_keywords = ["혀", "거울", "글씨", "시력", "스타일", "워너비", "선택", "증거", "상황", "문제", "등급", "성적", "학년"]
+    trigger_keywords = ["혀", "거울", "글씨", "시력", "스타일", "워너비", "선택", "증거", "상황", "문제", "등급", "성적", "학년", "부위", "팔자", "턱선", "눈가", "처짐", "주름"]
     show_tongue_ui = (
         current_stage == "tongue_select"
         and not selected_tongue
@@ -623,6 +625,37 @@ if not IS_ROOT and current_stage == "conversion" and not st.session_state.get("a
         """)
         st.warning("💡 이 학생이 사용한 **'역산 학습법'**과 **주차별 커리큘럼**을 받아보시겠습니까?")
     
+    elif CLIENT_ID == "lift":
+        with st.status("💎 AI 피부 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 고객 피부 탄력 데이터 수신 및 노화 패턴 분석...")
+            time.sleep(1.0)
+            st.write("🔍 강남 유사 리프팅 사례 10,000건 대조 중...")
+            time.sleep(1.2)
+            st.write("📊 피부 타입별 최적 시술 조합 산출 중...")
+            time.sleep(1.0)
+            status.update(label="✅ 분석 완료! 맞춤형 리프팅 리포트가 생성되었습니다.", state="complete", expanded=False)
+        
+        st.divider()
+        st.markdown("### 💎 [AI 리프팅 정밀 진단서]")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("피부 탄력 지수", "47점", "위험")
+        c2.metric("비수술 가능 기간", "D-180", "6개월")
+        c3.metric("예상 효과 지속", "18개월", "최적 시술 시")
+        st.error("⚠️ **긴급 경고:** 현재 **'진피층 콜라겐 붕괴'** 패턴이 감지되었습니다. 6개월 내 시술 미진행 시 수술밖에 답이 없어집니다.")
+        
+        # 솔루션 블러 처리 (인질극)
+        st.divider()
+        st.markdown("### 📂 [유사 사례: 10살 어려 보이는 비결]")
+        st.info("""
+**강남 김OO 고객** (45세, 팔자주름 + 턱선 처짐)
+
+✅ 시술 후 **"언니 아니라 동생 같다"** 소리 들음
+✅ 비결: **'??? 콤보 시술'** 적용
+
+🔒 **시술 조합과 예상 견적은 [맞춤 리포트]에서만 공개됩니다.**
+        """)
+        st.warning("💡 고객님 피부 타입에 최적화된 **'맞춤 시술 조합'**을 받아보시겠습니까?")
+    
     # 분석 결과 표시 완료 플래그
     st.session_state.analysis_shown = True
 
@@ -688,157 +721,72 @@ if show_cta and current_stage != "complete":
 
 
 # ============================================
-# [FIXED_FINAL] 입력창 가시성 완벽 패치 (White/Black 고정)
+# 입력창 + AI 응답
 # ============================================
+user_input = st.chat_input("메시지를 입력해주세요")
 
-st.markdown("""
-<style>
-    /* 1. 칩 위의 안내 문구 (진한 회색) */
-    .chip-guide {
-        color: #1F2937 !important; 
-        font-size: 14px !important; 
-        font-weight: 700 !important;
-        margin-bottom: 10px !important;
-        text-align: center !important;
-    }
-
-    /* 2. 채팅 입력창 위치 고정 및 표시 */
-    .stChatInput {
-        display: block !important;
-        bottom: 0px !important;
-        background-color: transparent !important;
-    }
-
-    /* 3. [핵심] 입력창 디자인 강제 고정 (테마 무시) */
-    /* 입력창의 배경을 무조건 흰색(#FFF)으로, 글자를 검은색(#000)으로 설정 */
-    
-    div[data-testid="stChatInput"] {
-        background-color: #FFFFFF !important; /* 입력창 바 전체 흰색 */
-        border-top: 1px solid #E5E7EB !important;
-        border-radius: 15px !important; /* 둥근 모서리 */
-    }
-
-    div[data-testid="stChatInput"] textarea {
-        background-color: #FFFFFF !important;  /* 입력칸 배경 흰색 */
-        color: #000000 !important;             /* 입력 글자 완전 검정 */
-        caret-color: #000000 !important;       /* 커서 검정 */
-        -webkit-text-fill-color: #000000 !important; /* 크롬 강제 적용 */
-        border: 1px solid #E5E7EB !important;  /* 테두리 회색 */
-    }
-
-    /* 4. 안내 문구(Placeholder) 색상 */
-    div[data-testid="stChatInput"] textarea::placeholder {
-        color: #6B7280 !important; /* 연한 회색 */
-        -webkit-text-fill-color: #6B7280 !important;
-    }
-    
-    /* 5. 전송 버튼 아이콘 색상 */
-    div[data-testid="stChatInput"] button {
-        color: #000000 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# 2. 페르소나별 추천 질문 칩(Chips) 데이터
-chip_data = {
-    "law": [
-        ("💔 배우자 외도", "배우자의 외도 증거가 있는데 어떻게 해야 할까요?"),
-        ("💰 재산분할", "이혼 시 재산분할 기여도와 양육권 상담 원합니다."),
-        ("🚨 성범죄/형사", "억울하게 성범죄 사건에 연루되었습니다. 도와주세요."),
-    ],
-    "nana": [
-        ("✨ 눈/코 성형", "눈이랑 코 성형 상담을 받고 싶습니다. 비용 궁금해요."),
-        ("👙 가슴/체형", "가슴 성형 보형물 종류와 제 체형에 맞는 수술법이 궁금합니다."),
-        ("💎 화려한 스타일", "티 나더라도 확실하게 예뻐지는 화려한 라인을 원해요."),
-    ],
-    "hanbang": [
-        ("🔋 만성 피로", "자고 일어나도 몸이 너무 무겁고 피곤해요. 보약 상담 원합니다."),
-        ("🤕 통증/교통사고", "교통사고 후유증으로 허리와 목이 계속 아파요."),
-        ("🌿 다이어트", "요요 없는 한방 다이어트 프로그램이 궁금합니다."),
-    ],
-    "gs": [
-        ("👓 라식/라섹 비용", "시력 교정 수술(라식/라섹) 가격과 회복 기간이 궁금해요."),
-        ("👵 노안/백내장", "부모님이 눈이 침침하다고 하십니다. 백내장 검사 받아보고 싶습니다."),
-        ("😵 난시/빛번짐", "난시가 심하고 밤에 빛이 번져 보여요. 수술 가능한가요?"),
-    ],
-    "math": [
-        ("📉 성적 하락 고민", "아이가 학원은 다니는데 성적이 계속 떨어져요. 원인이 뭘까요?"),
-        ("🧱 기초 개념 부족", "수학 기초가 너무 부족해서 수업을 못 따라가요."),
-        ("🚀 선행/심화 학습", "상위권 도약을 위해 선행 학습과 심화 과정이 필요합니다."),
-    ],
-    "root": [
-        ("🏥 병원 마케팅", "병원 매출 올리는 AI 도입하고 싶습니다."),
-        ("⚖️ 법률 마케팅", "변호사 사무실용 AI 상담 보고 싶습니다."),
-        ("💰 진짜 효과 있나?", "이 시스템 도입하면 진짜 매출 오르나요?"),
-    ]
-}
-
-# 3. 칩 렌더링 및 클릭 처리
-user_trigger = None
-
-# 대화가 막 시작된 경우(1개 이하)에만 칩 노출
-if len(conv_manager.get_history()) <= 1:
-    current_chips = chip_data.get(CLIENT_ID, chip_data["root"])
-    
-    if current_chips:
-        # 스타일 적용된 div 태그 사용 (색상 문제 해결)
-        st.markdown('<div class="chip-guide">👇 질문이 막막하다면? (클릭 시 자동 입력)</div>', unsafe_allow_html=True)
-        
-        cols = st.columns(len(current_chips))
-        for i, (label, text) in enumerate(current_chips):
-            with cols[i]:
-                if st.button(label, key=f"chip_{i}", use_container_width=True):
-                    user_trigger = text
-
-# 4. 채팅 입력창 (항상 표시)
-# 칩을 누르지 않았을 때만 입력창의 값을 받음
-chat_val = st.chat_input("직접 상황을 입력하셔도 됩니다...")
-
-# 5. 메시지 처리 로직 (버튼 or 입력창)
-final_input = None
-if user_trigger:
-    final_input = user_trigger
-elif chat_val:
-    final_input = chat_val
-
-if final_input:
-    # (1) 유저 메시지 저장
-    conv_manager.add_message("user", final_input, metadata={"type": "text"})
+if user_input:
+    conv_manager.add_message("user", user_input, metadata={"type": "text"})
     st.session_state.conversation_count = st.session_state.get("conversation_count", 0) + 1
     
-    # (2) 칩으로 눌렀을 때만 살짝 로딩 연출 (있어 보이게)
-    if user_trigger:
-        with st.spinner("AI가 내용을 분석 중입니다..."):
-            time.sleep(0.8)
-
     context = conv_manager.get_context()
     history_for_llm = conv_manager.get_history()
     
-    # (3) LLM 호출
-    raw_ai = generate_ai_response(final_input, context, history_for_llm)
+    raw_ai = generate_ai_response(user_input, context, history_for_llm)
     clean_ai, new_stage, route_to = parse_response_tags(raw_ai, context.get("stage", "initial"))
     
-    # (4) 후기 부착 (데모 모드 Conversion 단계)
+    # 데모 모드에서 conversion일 때 후기 추가
     if not IS_ROOT and new_stage == "conversion":
         from prompt_engine import generate_veritas_story
-        user_texts = [msg.get("text", "") for msg in conv_manager.get_history() if msg.get("role") == "user"]
-        symptom_text = " ".join(user_texts) if user_texts else "기본 증상"
-        success_story = generate_veritas_story(symptom_text, client_id=CLIENT_ID)
+        user_messages = [msg.get("text", "") for msg in conv_manager.get_history() if msg.get("role") == "user"]
+        symptom_messages = [m for m in user_messages if len(m) >= 5 and any(ord('가') <= ord(c) <= ord('힣') for c in m)]
+        symptom = " ".join(symptom_messages[:2]) if symptom_messages else "만성 피로"
+        success_story = generate_veritas_story(symptom, client_id=CLIENT_ID)
         
+        # 학원(math)은 '유사 사례 분석' 형태로 저장 (st.info로 별도 표시)
         if CLIENT_ID == "math":
             st.session_state.math_case_study = success_story
-            clean_ai += "\n\n잠시만요, 어머님 자녀분과 가장 유사한 성적 향상 사례를 데이터베이스에서 찾았습니다..."
+            clean_ai += "\n\n잠시만요, 어머님 자녀분과 비슷한 케이스를 데이터베이스에서 찾아보겠습니다..."
         else:
-            clean_ai += f"\n\n---\n\n💬 **실제 사례**\n\n\"{success_story}\"\n\n---\n"
+            # 기존 방식 (병원/법률 등)
+            clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
     
-    # (5) AI 메시지 저장 및 단계 업데이트
     conv_manager.add_message("ai", clean_ai)
     conv_manager.update_stage(new_stage)
     
-    # (6) Root 모드 라우팅
+    # Root 모드에서 라우팅 감지
     if IS_ROOT and route_to:
         st.session_state.pending_route = route_to
     
+    time.sleep(0.2)
     st.rerun()
 
-# ... (이하 완료 후 버튼, 푸터 등은 기존 코드 유지) ...
+
+# ============================================
+# 완료 후 버튼
+# ============================================
+if conv_manager.get_context().get("stage") == "complete":
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("새 상담 시작", use_container_width=True):
+            conv_manager.reset_conversation()
+            conv_manager.update_stage("initial")
+            st.session_state.conversation_count = 0
+            st.rerun()
+    with col2:
+        if st.button("상담 내역 보기", use_container_width=True):
+            with st.expander("상담 요약", expanded=True):
+                st.markdown(html_escape(conv_manager.get_summary()), unsafe_allow_html=True)
+
+# ============================================
+# 푸터
+# ============================================
+st.markdown(
+    f"""
+<div class="footer">
+    <b>{CFG["FOOTER_TITLE"]}</b><br>
+    {CFG["FOOTER_SUB"]}
+</div>
+""",
+    unsafe_allow_html=True,
+)
