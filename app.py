@@ -211,6 +211,55 @@ header {{visibility: hidden;}}
         max-width: 25% !important;
     }}
 }}
+
+/* st.metric 글자색 강제 지정 */
+[data-testid="stMetric"] {{
+    background: #F8FAFC !important;
+    padding: 16px !important;
+    border-radius: 12px !important;
+    border: 1px solid #E2E8F0 !important;
+}}
+
+[data-testid="stMetricLabel"] {{
+    color: #64748B !important;
+}}
+
+[data-testid="stMetricValue"] {{
+    color: #1E293B !important;
+    font-weight: 700 !important;
+}}
+
+[data-testid="stMetricDelta"] {{
+    color: #059669 !important;
+}}
+
+/* st.status 글자색 */
+[data-testid="stStatusWidget"] {{
+    color: #1F2937 !important;
+}}
+
+[data-testid="stStatus"] p, 
+[data-testid="stStatus"] span {{
+    color: #1F2937 !important;
+}}
+
+/* st.info, st.warning, st.error, st.success 글자색 */
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] span,
+.stAlert p,
+.stAlert span {{
+    color: #1F2937 !important;
+}}
+
+/* st.divider */
+[data-testid="stDivider"] {{
+    border-color: #E5E7EB !important;
+}}
+
+/* 마크다운 h3 */
+.stMarkdown h3 {{
+    color: #1E293B !important;
+}}
 </style>
 """,
     unsafe_allow_html=True,
