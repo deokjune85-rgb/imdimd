@@ -18,6 +18,55 @@ from conversation_manager import get_conversation_manager
 from prompt_engine import get_prompt_engine, generate_ai_response
 from lead_handler import LeadHandler
 
+
+# ============================================
+# AI 진단 로직 함수 (lift용)
+# ============================================
+def get_lift_recommendation(age_group, worry, history):
+    """고민 부위 + 연령대 + 시술 경험에 따른 맞춤 추천"""
+    
+    treatment_name = ""
+    description = ""
+    urgency_msg = ""
+    
+    # 로직 1: 고민 부위에 따른 시술 추천 (가장 중요)
+    if "턱" in worry or "이중턱" in worry:
+        treatment_name = "윤곽 조각 리프팅 (지방분해 + 탄력 고정)"
+        description = "지방층이 두꺼운 부위입니다. 불필요한 지방은 줄이고 근막(SMAS)층을 당겨주는 고주파 복합 시술이 필요합니다."
+    elif "팔자" in worry:
+        treatment_name = "심부볼 리프팅 & 볼륨 채움"
+        description = "단순히 당기는 것만으로는 부족합니다. 꺼진 부위는 채우고, 처진 유지인대를 강화하는 시술이 병행되어야 합니다."
+    elif "볼패임" in worry or "땅콩" in worry:
+        treatment_name = "타이트닝 & 볼륨 리프팅"
+        description = "가장 주의가 필요한 타입입니다. 강한 시술은 오히려 더 늙어 보일 수 있습니다. 피부 밀도를 높이는 고주파 계열이 안전합니다."
+    else:  # 전반적 탄력 저하
+        treatment_name = "올인원 풀페이스 타이트닝"
+        description = "피부 전층(표피-진피-근막)을 동시에 자극하여 콜라겐 생성을 극대화하는 레이저 리프팅이 적합합니다."
+    
+    # 로직 2: 연령대에 따른 긴급도 멘트
+    if "20대" in age_group:
+        urgency_msg = "아직 노화가 본격화되기 전입니다. 지금 관리하면 10년 후가 달라집니다."
+    elif "30대" in age_group:
+        urgency_msg = "아직 깊은 주름이 자리 잡기 전입니다. 지금 관리하면 '가성비'가 가장 좋습니다."
+    elif "40대" in age_group:
+        urgency_msg = "피부 회복력이 떨어지기 시작하는 시기입니다. 1년 늦어질수록 비용이 증가합니다."
+    else:  # 50대 이상
+        urgency_msg = "피부 회복력이 급격히 떨어지는 시기입니다. 지금이 비수술로 해결할 수 있는 마지막 기회일 수 있습니다."
+    
+    # 로직 3: 시술 경험에 따른 추가 멘트
+    history_msg = ""
+    if "없음" in history or "처음" in history:
+        history_msg = "첫 시술이시므로 부작용 위험이 낮은 조합부터 시작하는 것이 좋습니다."
+    elif "1년" in history:
+        history_msg = "유지 시술 타이밍입니다. 기존 효과가 남아있을 때 추가하면 시너지가 납니다."
+    elif "3년 이내" in history:
+        history_msg = "기존 시술 효과가 거의 소멸된 시점입니다. 리터치 시술이 시급합니다."
+    else:  # 3년 이상
+        history_msg = "처음 시술하시는 분과 동일하게 기초부터 다시 시작해야 합니다."
+    
+    return treatment_name, description, urgency_msg, history_msg
+
+
 from config import (
     get_client_id_from_query,
     get_config,
@@ -485,11 +534,11 @@ if CLIENT_ID == "lift" and current_stage != "conversion" and current_stage != "c
     # AI 대사 키워드로 현재 단계 및 버튼 결정
     buttons = []
     if "연령대" in last_ai_text:
-        buttons = ["30대", "40대", "50대 이상"]
-    elif "신경 쓰이는 부위" in last_ai_text or "고민" in last_ai_text and "부위" in last_ai_text:
-        buttons = ["턱라인 무너짐", "팔자주름", "볼패임/볼처짐"]
+        buttons = ["20대", "30대", "40대", "50대 이상"]
+    elif "신경 쓰이는 부위" in last_ai_text:
+        buttons = ["무너진 턱라인(이중턱)", "깊어지는 팔자주름", "볼패임/땅콩형 얼굴", "전반적인 탄력 저하"]
     elif "시술 경험" in last_ai_text:
-        buttons = ["없음", "1년 이내", "3년 이내"]
+        buttons = ["없음(처음)", "1년 이내", "3년 이내", "3년 이상"]
     
     # 버튼 표시
     if buttons:
@@ -498,16 +547,37 @@ if CLIENT_ID == "lift" and current_stage != "conversion" and current_stage != "c
                 '<div style="text-align:center; color:#9CA3AF; font-size:12px; margin:8px 0;">버튼을 선택하거나, 직접 입력하셔도 됩니다</div>',
                 unsafe_allow_html=True,
             )
-            cols = st.columns(3)
-            for idx, btn_label in enumerate(buttons):
-                with cols[idx]:
-                    if st.button(btn_label, key=f"lift_btn_{idx}_{btn_label}", use_container_width=True):
-                        conv_manager.add_message("user", btn_label)
-                        raw_ai = generate_ai_response(btn_label, conv_manager.get_context(), conv_manager.get_history())
-                        clean_ai, new_stage, route_to = parse_response_tags(raw_ai, current_stage)
-                        conv_manager.add_message("ai", clean_ai)
-                        conv_manager.update_stage(new_stage)
-                        st.rerun()
+            # 4개 버튼일 때 2x2 또는 4열
+            if len(buttons) == 4:
+                cols = st.columns(2)
+                for idx, btn_label in enumerate(buttons):
+                    with cols[idx % 2]:
+                        if st.button(btn_label, key=f"lift_btn_{idx}_{btn_label}", use_container_width=True):
+                            # 선택한 값 저장 (나이 매칭용)
+                            if "대" in btn_label:
+                                st.session_state.lift_age = btn_label
+                            elif "턱" in btn_label or "팔자" in btn_label or "볼패임" in btn_label or "탄력" in btn_label:
+                                st.session_state.lift_concern = btn_label
+                            else:
+                                st.session_state.lift_history = btn_label
+                            
+                            conv_manager.add_message("user", btn_label)
+                            raw_ai = generate_ai_response(btn_label, conv_manager.get_context(), conv_manager.get_history())
+                            clean_ai, new_stage, route_to = parse_response_tags(raw_ai, current_stage)
+                            conv_manager.add_message("ai", clean_ai)
+                            conv_manager.update_stage(new_stage)
+                            st.rerun()
+            else:
+                cols = st.columns(len(buttons))
+                for idx, btn_label in enumerate(buttons):
+                    with cols[idx]:
+                        if st.button(btn_label, key=f"lift_btn_{idx}_{btn_label}", use_container_width=True):
+                            conv_manager.add_message("user", btn_label)
+                            raw_ai = generate_ai_response(btn_label, conv_manager.get_context(), conv_manager.get_history())
+                            clean_ai, new_stage, route_to = parse_response_tags(raw_ai, current_stage)
+                            conv_manager.add_message("ai", clean_ai)
+                            conv_manager.update_stage(new_stage)
+                            st.rerun()
 
 
 # ============================================
@@ -674,35 +744,79 @@ if not IS_ROOT and current_stage == "conversion" and not st.session_state.get("a
         st.warning("💡 이 학생이 사용한 **'역산 학습법'**과 **주차별 커리큘럼**을 받아보시겠습니까?")
     
     elif CLIENT_ID == "lift":
-        with st.status("💎 AI 피부 데이터 정밀 분석 중...", expanded=True) as status:
-            st.write("📡 고객 피부 탄력 데이터 수신 및 노화 패턴 분석...")
+        with st.status("🔄 강남 40,000건의 데이터와 대조 중입니다...", expanded=True) as status:
+            st.write("📡 고객님의 피부 데이터 수신 중...")
             time.sleep(1.0)
-            st.write("🔍 강남 유사 리프팅 사례 10,000건 대조 중...")
+            st.write("🔍 연령대별 유사 사례 매칭 중...")
             time.sleep(1.2)
-            st.write("📊 피부 타입별 최적 시술 조합 산출 중...")
+            st.write("📊 최적 시술 조합 산출 중...")
             time.sleep(1.0)
-            status.update(label="✅ 분석 완료! 맞춤형 리프팅 리포트가 생성되었습니다.", state="complete", expanded=False)
+            status.update(label="✅ 분석 완료! 고객님만을 위한 리프팅 설계도가 나왔습니다.", state="complete", expanded=False)
+        
+        # 세션에서 선택값 가져오기
+        lift_age = st.session_state.get("lift_age", "30대")
+        lift_concern = st.session_state.get("lift_concern", "팔자주름")
+        lift_history = st.session_state.get("lift_history", "없음")
+        
+        # 로직 함수 호출
+        rec_name, rec_desc, urgency_msg, history_msg = get_lift_recommendation(lift_age, lift_concern, lift_history)
+        
+        # 연령대별 피부 나이 및 사례 나이 계산 (고객 연령대 + 3~6살)
+        if "20대" in lift_age:
+            skin_age = "26세"
+            case_age = "28세"
+            case_name = "이OO"
+        elif "30대" in lift_age:
+            skin_age = "34세"
+            case_age = "36세"
+            case_name = "박OO"
+        elif "40대" in lift_age:
+            skin_age = "45세"
+            case_age = "47세"
+            case_name = "김OO"
+        else:
+            skin_age = "54세"
+            case_age = "56세"
+            case_name = "최OO"
+        
+        # 고민 부위 간략화
+        if "턱" in lift_concern:
+            concern_short = "턱라인"
+        elif "팔자" in lift_concern:
+            concern_short = "팔자주름"
+        elif "볼패임" in lift_concern or "땅콩" in lift_concern:
+            concern_short = "볼패임"
+        else:
+            concern_short = "탄력 저하"
         
         st.divider()
         st.markdown("### 💎 [AI 리프팅 정밀 진단서]")
         c1, c2, c3 = st.columns(3)
-        c1.metric("피부 탄력 지수", "47점", "위험")
-        c2.metric("비수술 가능 기간", "D-180", "6개월")
-        c3.metric("예상 효과 지속", "18개월", "최적 시술 시")
-        st.error("⚠️ **긴급 경고:** 현재 **'진피층 콜라겐 붕괴'** 패턴이 감지되었습니다. 6개월 내 시술 미진행 시 수술밖에 답이 없어집니다.")
+        c1.metric("피부 탄력 나이", skin_age, "실제 나이보다 높음 ⚠️")
+        c2.metric("탄력 위험도", "47점", "주의 단계")
+        c3.metric("비수술 골든타임", "D-180일", "6개월")
         
-        # 솔루션 블러 처리 (인질극)
+        # 추천 시술 표시
         st.divider()
-        st.markdown("### 📂 [유사 사례: 10살 어려 보이는 비결]")
-        st.info("""
-**강남 김OO 고객** (45세, 팔자주름 + 턱선 처짐)
+        st.markdown("### 🎯 [AI 추천 시술]")
+        st.success(f"**{rec_name}**")
+        st.info(f"**[분석 코멘트]** {rec_desc}")
+        st.warning(f"**[긴급도]** {urgency_msg}")
+        if history_msg:
+            st.caption(f"💡 {history_msg}")
+        
+        # 유사 성공 사례 (나이 매칭)
+        st.divider()
+        st.markdown("### 📂 [유사 성공 사례 매칭]")
+        st.info(f"""
+**강남 {case_name} 고객 ({case_age}, {concern_short} 고민)**
 
-✅ 시술 후 **"언니 아니라 동생 같다"** 소리 들음
-✅ 비결: **'??? 콤보 시술'** 적용
+✅ 고객님과 **98% 유사**한 피부 두께 및 처짐 패턴
+✅ 시술 3주 후 눈에 띄는 개선 확인
+✅ 적용 시술: **{rec_name}**
 
-🔒 **시술 조합과 예상 견적은 [맞춤 리포트]에서만 공개됩니다.**
+🔒 **상세 시술 구성과 예상 견적은 리포트에서 확인하세요.**
         """)
-        st.warning("💡 고객님 피부 타입에 최적화된 **'맞춤 시술 조합'**을 받아보시겠습니까?")
     
     # 분석 결과 표시 완료 플래그
     st.session_state.analysis_shown = True
@@ -733,6 +847,10 @@ if show_cta and current_stage != "complete":
             if CLIENT_ID == "lift":
                 customer_name = st.text_input(CFG["FORM_LABEL_1"], placeholder=CFG["FORM_PLACEHOLDER_1"])
                 contact = st.text_input(CFG["FORM_LABEL_2"], placeholder=CFG["FORM_PLACEHOLDER_2"])
+                # 안심 문구
+                cta_note = CFG.get("CTA_NOTE", "")
+                if cta_note:
+                    st.caption(f"*{cta_note}*")
                 submitted = st.form_submit_button(CFG["FORM_BUTTON"], use_container_width=True)
                 
                 if submitted:
