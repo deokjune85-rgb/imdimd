@@ -593,32 +593,35 @@ if not IS_ROOT and current_stage == "conversion" and not st.session_state.get("a
         st.error("⚠️ **긴급 경고:** 상대방의 **재산 은닉** 징후가 포착되었습니다. 12시간 내 가압류 미진행 시 회수 불능 위험이 있습니다.")
     
     elif CLIENT_ID == "math":
-        with st.status("📐 AI 학습 데이터 정밀 분석 중...", expanded=True) as status:
-            st.write("📡 학생 성적 데이터 수신 및 취약점 추출...")
+        with st.status("📐 AI 입시 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 학생 성적 패턴 수신 및 취약점 추출...")
             time.sleep(1.0)
-            st.write("🔍 목동/강남 유사 성적 향상 사례 5,000건 대조 중...")
+            st.write("🔍 대치동/목동 유사 성적 향상 사례 8,000건 대조 중...")
             time.sleep(1.2)
-            st.write("📊 맞춤형 커리큘럼 및 예상 등급 산출 중...")
+            st.write("📊 '역산 학습법' 적용 시 예상 등급 시뮬레이션...")
             time.sleep(1.0)
-            status.update(label="✅ 분석 완료! 맞춤형 학습 진단서가 생성되었습니다.", state="complete", expanded=False)
+            status.update(label="✅ 분석 완료! 맞춤형 진단 리포트가 생성되었습니다.", state="complete", expanded=False)
         
         st.divider()
-        st.markdown("### 📐 [AI 학습 정밀 진단서]")
+        st.markdown("### 📐 [AI 입시 정밀 진단서]")
         c1, c2, c3 = st.columns(3)
-        c1.metric("개념 이해도", "62점", "보통")
-        c2.metric("예상 등급 변화", "3등급 → 1등급", "+2등급")
-        c3.metric("필요 기간", "3개월", "집중반")
-        st.error("⚠️ **긴급 경고:** 현재 **개념 결손**이 심각합니다. 이번 방학 내 재건축 미진행 시 고2에서 5등급 이하 추락 위험이 있습니다.")
+        c1.metric("현재 학습 효율", "38%", "위험")
+        c2.metric("수포자 확률", "93%", "매우 높음")
+        c3.metric("골든타임", "D-90", "이번 방학")
+        st.error("⚠️ **긴급 경고:** 현재 **'관람객 공부법'** 패턴이 감지되었습니다. 즉시 교정하지 않으면 고3에서 회복 불가능합니다.")
         
-        # 유사 사례 카드 (math 전용)
-        if st.session_state.get("math_case_study"):
-            case_study = st.session_state.math_case_study
-            st.info(f"""
-**[📂 유사 사례 분석 결과]**
+        # 솔루션 블러 처리 (인질극)
+        st.divider()
+        st.markdown("### 📂 [유사 사례: 4등급 → 1등급 달성]")
+        st.info("""
+**목동고 김OO 학생** (고2, 수학 4등급 → 1등급)
 
-{case_study}
-            """)
-            st.session_state.math_case_study = None
+✅ 3개월 만에 **전교 15등** 달성
+✅ 비결: **'??? 학습법'** 적용
+
+🔒 **상세 로드맵은 [맞춤형 리포트]에서만 공개됩니다.**
+        """)
+        st.warning("💡 이 학생이 사용한 **'역산 학습법'**과 **주차별 커리큘럼**을 받아보시겠습니까?")
     
     # 분석 결과 표시 완료 플래그
     st.session_state.analysis_shown = True
