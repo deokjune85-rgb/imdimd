@@ -688,44 +688,113 @@ if show_cta and current_stage != "complete":
 
 
 # ============================================
-# 입력창 + AI 응답
+# [NEW] 입력창 + AI 응답 (프롬프트 칩 탑재)
 # ============================================
-user_input = st.chat_input("메시지를 입력해주세요")
 
+# 1. 페르소나별 추천 질문 칩(Chips) 데이터 - "이거 눌러"라고 유혹하는 버튼들
+chip_data = {
+    "law": [
+        ("💔 배우자 외도", "배우자의 외도 증거가 있는데 어떻게 해야 할까요?"),
+        ("💰 재산분할/양육권", "이혼 시 재산분할 기여도와 양육권 상담 원합니다."),
+        ("🚨 성범죄/형사", "억울하게 성범죄 사건에 연루되었습니다. 도와주세요."),
+    ],
+    "nana": [
+        ("✨ 눈/코 성형", "눈이랑 코 성형 상담을 받고 싶습니다. 비용이랑 회복기간 궁금해요."),
+        ("👙 가슴/체형", "가슴 성형 보형물 종류와 제 체형에 맞는 수술법이 궁금합니다."),
+        ("💎 화려한 스타일", "티 나더라도 확실하게 예뻐지는 화려한 라인을 원해요."),
+    ],
+    "hanbang": [
+        ("🔋 만성 피로", "자고 일어나도 몸이 너무 무겁고 피곤해요. 보약 상담 원합니다."),
+        ("🤕 통증/교통사고", "교통사고 후유증으로 허리와 목이 계속 아파요."),
+        ("🌿 다이어트", "요요 없는 한방 다이어트 프로그램이 궁금합니다."),
+    ],
+    "gs": [
+        ("👓 라식/라섹 비용", "시력 교정 수술(라식/라섹) 가격과 회복 기간이 궁금해요."),
+        ("👵 노안/백내장", "부모님이 눈이 침침하다고 하십니다. 백내장 검사 받아보고 싶습니다."),
+        ("😵 난시/빛번짐", "난시가 심하고 밤에 빛이 번져 보여요. 수술 가능한가요?"),
+    ],
+    "math": [
+        ("📉 성적 하락 고민", "아이가 학원은 다니는데 성적이 계속 떨어져요. 원인이 뭘까요?"),
+        ("🧱 기초 개념 부족", "수학 기초가 너무 부족해서 수업을 못 따라가요."),
+        ("🚀 선행/심화 학습", "상위권 도약을 위해 선행 학습과 심화 과정이 필요합니다."),
+    ],
+    "root": [
+        ("🏥 병원 마케팅", "병원 매출 올리는 AI 도입하고 싶습니다."),
+        ("⚖️ 법률 마케팅", "변호사 사무실용 AI 상담 보고 싶습니다."),
+        ("💰 진짜 효과 있나?", "이 시스템 도입하면 진짜 매출 오르나요?"),
+    ]
+}
+
+# 2. 칩 선택 로직 (버튼을 누르면 입력된 것으로 간주)
+user_trigger = None
+
+# 대화가 아직 시작 안 됐거나(0), 막 시작된 경우(1개 이하)에만 칩 노출
+# (사용자가 뭘 물어볼지 모를 때 가이드를 줌)
+if len(conv_manager.get_history()) <= 1:
+    
+    # 현재 클라이언트에 맞는 칩 가져오기
+    current_chips = chip_data.get(CLIENT_ID, chip_data["root"])
+    
+    # 칩이 있다면 렌더링
+    if current_chips:
+        st.markdown("###### 👇 질문이 막막하다면? (클릭 시 자동 입력)")
+        cols = st.columns(len(current_chips))
+        for i, (label, text) in enumerate(current_chips):
+            with cols[i]:
+                # 버튼을 누르면 user_trigger에 텍스트 저장
+                if st.button(label, key=f"chip_{i}", use_container_width=True):
+                    user_trigger = text
+
+# 3. 입력창 (직접 입력 or 칩 선택) - 칩을 누르면 입력창 대신 작동
+if user_trigger:
+    user_input = user_trigger
+else:
+    user_input = st.chat_input("메시지를 입력해주세요")
+
+# 4. 메시지 처리 및 AI 응답 (핵심 로직)
 if user_input:
+    # (1) 유저 메시지 저장
     conv_manager.add_message("user", user_input, metadata={"type": "text"})
     st.session_state.conversation_count = st.session_state.get("conversation_count", 0) + 1
     
+    # (2) AI 응답 생성 (칩으로 눌렀을 때만 살짝 로딩 연출 -> 있어 보이게)
+    if user_trigger:
+        with st.spinner("AI가 분석 중입니다..."):
+            time.sleep(0.8)
+
     context = conv_manager.get_context()
     history_for_llm = conv_manager.get_history()
     
+    # (3) LLM 호출
     raw_ai = generate_ai_response(user_input, context, history_for_llm)
     clean_ai, new_stage, route_to = parse_response_tags(raw_ai, context.get("stage", "initial"))
     
-    # 데모 모드에서 conversion일 때 후기 추가
+    # (4) 후기(Veritas Story) 부착 로직 (데모 모드 Conversion 단계)
     if not IS_ROOT and new_stage == "conversion":
         from prompt_engine import generate_veritas_story
-        user_messages = [msg.get("text", "") for msg in conv_manager.get_history() if msg.get("role") == "user"]
-        symptom_messages = [m for m in user_messages if len(m) >= 5 and any(ord('가') <= ord(c) <= ord('힣') for c in m)]
-        symptom = " ".join(symptom_messages[:2]) if symptom_messages else "만성 피로"
-        success_story = generate_veritas_story(symptom, client_id=CLIENT_ID)
         
-        # 학원(math)은 '유사 사례 분석' 형태로 저장 (st.info로 별도 표시)
+        # 유저 대화에서 증상 키워드 추출 시도 (간단 로직)
+        user_texts = [msg.get("text", "") for msg in conv_manager.get_history() if msg.get("role") == "user"]
+        symptom_text = " ".join(user_texts) if user_texts else "기본 증상"
+        
+        success_story = generate_veritas_story(symptom_text, client_id=CLIENT_ID)
+        
+        # 학원(math)은 포맷 다르게, 나머지는 인용구 처리
         if CLIENT_ID == "math":
             st.session_state.math_case_study = success_story
-            clean_ai += "\n\n잠시만요, 어머님 자녀분과 비슷한 케이스를 데이터베이스에서 찾아보겠습니다..."
+            clean_ai += "\n\n잠시만요, 어머님 자녀분과 가장 유사한 성적 향상 사례를 데이터베이스에서 찾았습니다..."
         else:
-            # 기존 방식 (병원/법률 등)
-            clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
+            clean_ai += f"\n\n---\n\n💬 **실제 사례**\n\n\"{success_story}\"\n\n---\n"
     
+    # (5) AI 메시지 저장 및 단계 업데이트
     conv_manager.add_message("ai", clean_ai)
     conv_manager.update_stage(new_stage)
     
-    # Root 모드에서 라우팅 감지
+    # (6) Root 모드 라우팅 처리
     if IS_ROOT and route_to:
         st.session_state.pending_route = route_to
     
-    time.sleep(0.2)
+    # 화면 갱신
     st.rerun()
 
 
