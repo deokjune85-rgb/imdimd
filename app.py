@@ -283,6 +283,19 @@ div[data-testid="stStatus"] p {{
 .stMarkdown h3 {{
     color: #1E293B !important;
 }}
+
+/* Streamlit 버튼 스타일 - 옅은 회색 배경 + 검은 글자 */
+.stButton > button {{
+    background-color: #F3F4F6 !important;
+    color: #1F2937 !important;
+    border: 1px solid #E5E7EB !important;
+    font-weight: 500 !important;
+}}
+
+.stButton > button:hover {{
+    background-color: #E5E7EB !important;
+    border-color: #D1D5DB !important;
+}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -488,9 +501,26 @@ if CLIENT_ID == "lift" and current_stage != "conversion" and current_stage != "c
     if buttons and len(chat_history) >= 1:
         with st.container():
             st.markdown(
-                f'<div style="text-align:center; color:#6B7280; font-size:13px; margin:8px 0;">버튼을 선택하거나, 직접 입력하셔도 됩니다</div>',
+                '<div style="text-align:center; color:#9CA3AF; font-size:12px; margin:8px 0;">버튼을 선택하거나, 직접 입력하셔도 됩니다</div>',
                 unsafe_allow_html=True,
             )
+            # 버튼을 HTML로 직접 렌더링 (옅은 회색 배경 + 검은 글자)
+            btn_html = '<div style="display:flex; justify-content:center; gap:10px; margin:10px 0;">'
+            for idx, btn_label in enumerate(buttons):
+                btn_html += f'''
+                <form action="" method="post" style="margin:0;">
+                    <button type="submit" name="lift_btn_{lift_step}_{idx}" 
+                        style="background:#F3F4F6; color:#1F2937; border:1px solid #E5E7EB; 
+                        padding:10px 20px; border-radius:8px; font-size:14px; cursor:pointer;
+                        transition:background 0.2s;"
+                        onmouseover="this.style.background='#E5E7EB'" 
+                        onmouseout="this.style.background='#F3F4F6'">
+                        {btn_label}
+                    </button>
+                </form>'''
+            btn_html += '</div>'
+            
+            # Streamlit 버튼 사용 (스타일은 CSS로 제어)
             cols = st.columns(3)
             for idx, btn_label in enumerate(buttons):
                 with cols[idx]:
@@ -857,29 +887,25 @@ if conv_manager.get_context().get("stage") == "complete":
                 st.markdown(html_escape(conv_manager.get_summary()), unsafe_allow_html=True)
 
 # ============================================
-# 푸터 - B2B 마케팅용 하단 배너 (클릭 시 제작사 홈페이지 이동)
+# 푸터 - 하단 조그만 회색 글자 (클릭 시 제작사 홈페이지 이동)
 # ============================================
 footer_url = CFG.get("FOOTER_URL", "https://www.converdream.co.kr")
-st.markdown("---")
 st.markdown(
     f"""
 <div style="
-    text-align: center; 
-    font-size: 12px; 
-    color: #888; 
-    margin-top: 20px;
-    margin-bottom: 100px;
-    padding: 20px; 
-    background-color: #f9f9f9; 
-    border-radius: 10px;
-    cursor: pointer;"
-    onclick="window.open('{footer_url}', '_blank')">
-    
-    <a href="{footer_url}" target="_blank" style="text-decoration: none; color: #444;">
-        <strong>{CFG["FOOTER_TITLE"]}</strong><br>
-        <span style="font-size: 11px; color: #666;">
-            {CFG["FOOTER_SUB"]}
-        </span>
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 11px;
+    color: #9CA3AF;
+    border-top: 1px solid #E5E7EB;
+    z-index: 998;">
+    <a href="{footer_url}" target="_blank" style="text-decoration: none; color: #9CA3AF;">
+        <b>{CFG["FOOTER_TITLE"]}</b> | {CFG["FOOTER_SUB"]}
     </a>
 </div>
 """,
