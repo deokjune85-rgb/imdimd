@@ -212,34 +212,57 @@ header {{visibility: hidden;}}
     }}
 }}
 
-/* st.metric 글자색 강제 지정 */
+/* st.metric 글자색 + 크기 강제 지정 */
 [data-testid="stMetric"] {{
     background: #F8FAFC !important;
-    padding: 16px !important;
+    padding: 12px !important;
     border-radius: 12px !important;
     border: 1px solid #E2E8F0 !important;
 }}
 
 [data-testid="stMetricLabel"] {{
     color: #64748B !important;
+    font-size: 13px !important;
 }}
 
 [data-testid="stMetricValue"] {{
     color: #1E293B !important;
     font-weight: 700 !important;
+    font-size: 18px !important;
 }}
 
 [data-testid="stMetricDelta"] {{
     color: #059669 !important;
+    font-size: 12px !important;
 }}
 
-/* st.status 글자색 */
+/* st.status 글자색 - 모든 요소 강제 */
+[data-testid="stStatus"] {{
+    color: #1F2937 !important;
+}}
+
+[data-testid="stStatus"] * {{
+    color: #1F2937 !important;
+}}
+
 [data-testid="stStatusWidget"] {{
     color: #1F2937 !important;
 }}
 
-[data-testid="stStatus"] p, 
-[data-testid="stStatus"] span {{
+[data-testid="stExpander"] summary span {{
+    color: #1F2937 !important;
+}}
+
+div[data-testid="stStatus"] label {{
+    color: #1F2937 !important;
+}}
+
+div[data-testid="stStatus"] p {{
+    color: #1F2937 !important;
+}}
+
+/* stStatus 내부 완료 메시지 */
+.stStatus span, .stStatus p, .stStatus label {{
     color: #1F2937 !important;
 }}
 
