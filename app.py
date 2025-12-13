@@ -440,6 +440,28 @@ if not IS_ROOT and TONGUE_TYPES:
 
 
 # ============================================
+# Math 사례 분석 카드 (st.info 박스)
+# ============================================
+if CLIENT_ID == "math" and st.session_state.get("math_case_study"):
+    case_study = st.session_state.math_case_study
+    with st.container():
+        time.sleep(1)  # 검색하는 척 딜레이
+        st.info(f"""
+**[📂 유사 사례 분석 결과]**
+
+{case_study}
+        """)
+        st.markdown("""
+이 학생도 처음엔 어머님처럼 고민했습니다. 
+하지만 **'개념 재건축'**을 하고 나서 수학이 가장 쉬운 과목이 되었습니다.
+
+**원장님이 직접 분석한 '1등급 솔루션'을 적용했을 때 예상 성적을 시뮬레이션해 드릴까요?**
+        """)
+    # 한 번 표시 후 초기화
+    st.session_state.math_case_study = None
+
+
+# ============================================
 # CTA (conversion 단계)
 # ============================================
 current_stage = conv_manager.get_context().get("stage", "initial")
@@ -522,24 +544,10 @@ if user_input:
         symptom = " ".join(symptom_messages[:2]) if symptom_messages else "만성 피로"
         success_story = generate_veritas_story(symptom, client_id=CLIENT_ID)
         
-        # 학원(math)은 '유사 사례 분석' 형태로 표시
+        # 학원(math)은 '유사 사례 분석' 형태로 저장 (st.info로 별도 표시)
         if CLIENT_ID == "math":
-            clean_ai += f"""
-
----
-
-**[📂 유사 사례 분석 결과]**
-
-어머님 자녀분과 똑같은 케이스가 작년에 있었습니다.
-
-> {success_story}
-
-이 학생도 처음엔 어머님처럼 고민했습니다. 하지만 **'개념 재건축'**을 하고 나서 수학이 가장 쉬운 과목이 되었습니다.
-
-**원장님이 직접 분석한 '1등급 솔루션'을 받아보시겠습니까?**
-
----
-"""
+            st.session_state.math_case_study = success_story
+            clean_ai += "\n\n잠시만요, 어머님 자녀분과 비슷한 케이스를 데이터베이스에서 찾아보겠습니다..."
         else:
             # 기존 방식 (병원/법률 등)
             clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
