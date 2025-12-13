@@ -267,6 +267,8 @@ if "app_initialized" not in st.session_state or st.session_state.get("current_cl
     st.session_state.current_client = CLIENT_ID
     st.session_state.conversation_count = 0
     st.session_state.pending_route = None
+    st.session_state.analysis_shown = False
+    st.session_state.math_case_study = None
 
 conv_manager.update_context("client_id", CLIENT_ID)
 
@@ -440,25 +442,114 @@ if not IS_ROOT and TONGUE_TYPES:
 
 
 # ============================================
-# Math 사례 분석 카드 (st.info 박스)
+# AI 정밀 분석 결과 카드 (전 업종 공통)
 # ============================================
-if CLIENT_ID == "math" and st.session_state.get("math_case_study"):
-    case_study = st.session_state.math_case_study
-    with st.container():
-        time.sleep(1)  # 검색하는 척 딜레이
-        st.info(f"""
+if not IS_ROOT and current_stage == "conversion" and not st.session_state.get("analysis_shown"):
+    
+    # 1. 로딩 애니메이션 (st.status)
+    if CLIENT_ID == "hanbang":
+        with st.status("🧬 AI 한의학 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 환자 증상 데이터 수신 및 키워드 추출...")
+            time.sleep(1.0)
+            st.write("🔍 전국 유사 체질 사례 8,000건 대조 중...")
+            time.sleep(1.2)
+            st.write("📊 원장님 진료 철학 기반 맞춤 처방 산출 중...")
+            time.sleep(1.0)
+            status.update(label="✅ 분석 완료! 맞춤형 진단서가 생성되었습니다.", state="complete", expanded=False)
+        
+        # 2. 결과 카드 (st.metric)
+        st.divider()
+        st.markdown("### 🏥 [AI 한의학 정밀 진단서]")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("체질 적합도", "87점", "양호")
+        c2.metric("예상 치료 기간", "8주", "±2주")
+        c3.metric("호전 확률", "91%", "매우 높음")
+        st.warning("⚠️ **주의:** 현재 **기혈 순환 저하** 징후가 감지되었습니다. 2주 내 초진 미진행 시 만성화 위험이 있습니다.")
+    
+    elif CLIENT_ID == "gs":
+        with st.status("👁️ AI 안과 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 환자 시력 데이터 수신 및 패턴 분석...")
+            time.sleep(1.0)
+            st.write("🔍 강남구 유사 수술 사례 15,000건 대조 중...")
+            time.sleep(1.2)
+            st.write("📊 최적 수술법 및 예상 결과 산출 중...")
+            time.sleep(1.0)
+            status.update(label="✅ 분석 완료! 맞춤형 검안 리포트가 생성되었습니다.", state="complete", expanded=False)
+        
+        st.divider()
+        st.markdown("### 👁️ [AI 정밀 검안 리포트]")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("수술 적합도", "94점", "매우 높음")
+        c2.metric("예상 교정 시력", "1.2", "+1.0")
+        c3.metric("부작용 위험도", "3%", "매우 낮음")
+        st.error("⚠️ **긴급:** 현재 **각막 두께**가 평균 이하입니다. 일반 라식 불가, 스마일라식 프로 권장됩니다.")
+    
+    elif CLIENT_ID == "nana":
+        with st.status("✨ AI 뷰티 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 환자 얼굴형 데이터 수신 및 황금비율 분석...")
+            time.sleep(1.0)
+            st.write("🔍 강남구 유사 성형 사례 12,000건 대조 중...")
+            time.sleep(1.2)
+            st.write("📊 원장님 수술 철학 기반 견적 산출 중...")
+            time.sleep(1.0)
+            status.update(label="✅ 분석 완료! 맞춤형 제안서가 생성되었습니다.", state="complete", expanded=False)
+        
+        st.divider()
+        st.markdown("### ✨ [AI 뷰티 컨설팅 리포트]")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("스타일 매칭도", "96점", "완벽")
+        c2.metric("자연스러움 지수", "92점", "매우 높음")
+        c3.metric("회복 예상 기간", "2주", "빠름")
+        st.success("✅ **Good News:** 고객님의 얼굴형은 **자연유착**과 **비개방 코성형**에 최적화되어 있습니다.")
+    
+    elif CLIENT_ID == "law":
+        with st.status("⚖️ AI 법률 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 의뢰인 사건 데이터 수신 및 쟁점 추출...")
+            time.sleep(1.0)
+            st.write("🔍 유사 판례 50,000건 대조 중...")
+            time.sleep(1.2)
+            st.write("📊 승소 확률 및 예상 결과 산출 중...")
+            time.sleep(1.0)
+            status.update(label="✅ 분석 완료! 맞춤형 법률 진단서가 생성되었습니다.", state="complete", expanded=False)
+        
+        st.divider()
+        st.markdown("### ⚖️ [AI 법률 정밀 진단서]")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("승소 유력 지수", "92점", "매우 높음")
+        c2.metric("예상 위자료", "3,500만 원", "±500")
+        c3.metric("증거 확보율", "85%", "양호")
+        st.error("⚠️ **긴급 경고:** 상대방의 **재산 은닉** 징후가 포착되었습니다. 12시간 내 가압류 미진행 시 회수 불능 위험이 있습니다.")
+    
+    elif CLIENT_ID == "math":
+        with st.status("📐 AI 학습 데이터 정밀 분석 중...", expanded=True) as status:
+            st.write("📡 학생 성적 데이터 수신 및 취약점 추출...")
+            time.sleep(1.0)
+            st.write("🔍 목동/강남 유사 성적 향상 사례 5,000건 대조 중...")
+            time.sleep(1.2)
+            st.write("📊 맞춤형 커리큘럼 및 예상 등급 산출 중...")
+            time.sleep(1.0)
+            status.update(label="✅ 분석 완료! 맞춤형 학습 진단서가 생성되었습니다.", state="complete", expanded=False)
+        
+        st.divider()
+        st.markdown("### 📐 [AI 학습 정밀 진단서]")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("개념 이해도", "62점", "보통")
+        c2.metric("예상 등급 변화", "3등급 → 1등급", "+2등급")
+        c3.metric("필요 기간", "3개월", "집중반")
+        st.error("⚠️ **긴급 경고:** 현재 **개념 결손**이 심각합니다. 이번 방학 내 재건축 미진행 시 고2에서 5등급 이하 추락 위험이 있습니다.")
+        
+        # 유사 사례 카드 (math 전용)
+        if st.session_state.get("math_case_study"):
+            case_study = st.session_state.math_case_study
+            st.info(f"""
 **[📂 유사 사례 분석 결과]**
 
 {case_study}
-        """)
-        st.markdown("""
-이 학생도 처음엔 어머님처럼 고민했습니다. 
-하지만 **'개념 재건축'**을 하고 나서 수학이 가장 쉬운 과목이 되었습니다.
-
-**원장님이 직접 분석한 '1등급 솔루션'을 적용했을 때 예상 성적을 시뮬레이션해 드릴까요?**
-        """)
-    # 한 번 표시 후 초기화
-    st.session_state.math_case_study = None
+            """)
+            st.session_state.math_case_study = None
+    
+    # 분석 결과 표시 완료 플래그
+    st.session_state.analysis_shown = True
 
 
 # ============================================
