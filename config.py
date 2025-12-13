@@ -39,6 +39,7 @@ DATA = {
         "FORM_BUTTON": "무료 컨설팅 신청",
         "FOOTER_TITLE": "IMD Architecture Group",
         "FOOTER_SUB": "매출을 설계하는 비즈니스 아키텍처 그룹",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {},
         "IS_ROOT": True,
         "DEMO_BUTTONS": {
@@ -81,6 +82,7 @@ DATA = {
         "FORM_BUTTON": "무료 도입 견적서 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
         "FOOTER_SUB": "메디컬 전용 AI 매출 엔진 | 전국 수많은 병의원 도입 완료",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {
             "pale": {
                 "name": "담백설 (창백한 혀)",
@@ -173,6 +175,7 @@ DATA = {
         "FORM_BUTTON": "무료 도입 견적서 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
         "FOOTER_SUB": "메디컬 전용 AI 매출 엔진 | 안과 특화 솔루션",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {
             "pale": {
                 "name": "선명하게 보임 (정상)",
@@ -264,6 +267,7 @@ AI가 환자의 '워너비 스타일'을 파악하고 내원까지 시키는 과
         "FORM_BUTTON": "무료 도입 견적서 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
         "FOOTER_SUB": "메디컬 전용 AI 매출 엔진 | 성형외과 특화 솔루션",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {
             "pale": {
                 "name": "자연스러움 (Natural)",
@@ -356,6 +360,7 @@ AI가 환자의 '워너비 스타일'을 파악하고 내원까지 시키는 과
         "FORM_BUTTON": "무료 도입 견적서 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
         "FOOTER_SUB": "법률 전용 AI 사건 접수 시스템 | 가사/형사 자동 분류",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {
             "family": {
                 "name": "💔 배우자 외도 / 이혼 (가사)",
@@ -450,6 +455,7 @@ AI가 환자의 '워너비 스타일'을 파악하고 내원까지 시키는 과
         "FORM_BUTTON": "리포트 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
         "FOOTER_SUB": "학원 전용 AI 입시 진단 시스템 | 학부모 DB 자동 수집",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {
             "grade_low": {
                 "name": "📉 5등급 이하 (수포자 위기)",
@@ -515,93 +521,70 @@ AI가 환자의 '워너비 스타일'을 파악하고 내원까지 시키는 과
     },
 
     # ==========================================
-    # 6. [피부과 리프팅] (?client=lift) - 실장 대상 B2B 데모
+    # 6. [피부과 리프팅] (?client=lift) - B2C 고객 직접 타겟 (광고용)
     # ==========================================
     "lift": {
-        "APP_TITLE": "피부과 AI 리프팅 진단관",
-        "APP_ICON": "✨",
-        "HEADER_TITLE": "AI 리프팅 진단관",
-        "HEADER_SUB": "울쎄라, 써마지, 슈링크... 고객 피부에 '정답 시술'을 찾아드립니다",
-        "HEADER_SMALL": "'가격만 물어보고 나가는 고객'을 '시술 예약'으로 전환합니다. (체험시간: 2분)",
-        "INITIAL_MSG": """안녕하세요, 실장님.
+        "APP_TITLE": "AI 리프팅 진단",
+        "APP_ICON": "💎",
+        "HEADER_TITLE": "내 얼굴형에 딱 맞는 리프팅 시술은?",
+        "HEADER_SUB": "4만 건 데이터 기반 AI 분석",
+        "HEADER_SMALL": "30초 진단으로 나에게 맞는 시술과 예상 비용을 확인하세요",
+        "INITIAL_MSG": """안녕하세요, AI 리프팅 진단 시스템입니다.
 
-"울쎄라 얼마예요?" 물어보고 나가는 고객들... 아깝지 않으셨나요?
+**4만 건의 시술 데이터**를 학습한 AI가 고객님의 피부 타입에 딱 맞는 시술을 분석해 드립니다.
 
-저희 AI는 가격 전에 **'피부 상태'**를 먼저 진단합니다.
+간단한 질문 3가지만 답해주시면, **맞춤 시술 리포트**를 무료로 받아보실 수 있습니다.
 
-고객이 자신의 피부가 **'지금 안 하면 수술밖에 답이 없는 상태'**라는 걸 알게 되면, 가격이 아니라 **'효과'**를 찾게 됩니다.
-
-지금부터 **'리프팅을 알아보는 고객'** 역할을 해주세요.""",
-        "TONGUE_GUIDE": "가장 신경 쓰이는 부위를 선택해주세요",
-        "CTA_TITLE": "🔒 [맞춤 시술 리포트 잠금 해제]",
-        "CTA_SUB": "고객님 피부 타입에 최적화된 시술 조합과 예상 견적을 확인하세요",
-        "FORM_LABEL_1": "병원명",
-        "FORM_LABEL_2": "실장님 성함",
-        "FORM_PLACEHOLDER_1": "OO피부과",
-        "FORM_PLACEHOLDER_2": "김실장",
-        "FORM_BUTTON": "리포트 받기",
+먼저, 고객님의 **연령대**를 선택해주세요.""",
+        "TONGUE_GUIDE": "버튼을 선택하거나, 직접 입력하셔도 됩니다",
+        "CTA_TITLE": "🔒 맞춤 시술 리포트 잠금 해제",
+        "CTA_SUB": "추천 시술과 예상 비용을 확인하려면 연락처를 입력해주세요",
+        "FORM_LABEL_1": "성함",
+        "FORM_LABEL_2": "연락처",
+        "FORM_PLACEHOLDER_1": "홍길동",
+        "FORM_PLACEHOLDER_2": "010-1234-5678",
+        "FORM_BUTTON": "리포트 무료로 받기",
         "FOOTER_TITLE": "IMD Strategic Consulting",
-        "FOOTER_SUB": "피부과 전용 AI 리프팅 진단 시스템 | 시술 전환율 극대화",
+        "FOOTER_SUB": "피부과 전용 AI 리프팅 진단 시스템 구축 문의 | 시술 전환율 극대화 솔루션",
+        "FOOTER_URL": "https://www.converdream.co.kr",
         "TONGUE_TYPES": {
-            "cheek": {
-                "name": "😰 팔자주름 / 볼처짐",
-                "emoji": "😰",
-                "image": "cheek.png",
-                "analysis": (
-                    "중안부 탄력 저하가 감지됩니다. "
-                    "팔자주름은 '지방 하수'와 '피부 이완'이 동시에 진행된 상태입니다. "
-                    "표면만 당기는 시술로는 효과가 제한적입니다."
-                ),
-                "symptoms": "팔자주름 깊어짐, 볼살 처짐, 광대 아래 그늘",
-                "warning": (
-                    "이 상태로 1년 더 방치하면 비수술로는 한계가 옵니다. "
-                    "지금이 비수술 리프팅의 마지막 골든타임입니다."
-                ),
+            "age_30": {
+                "name": "30대",
+                "emoji": "3️⃣",
+                "image": "age_30.png",
+                "analysis": "30대는 예방적 리프팅의 골든타임입니다.",
+                "symptoms": "초기 탄력 저하, 미세 주름",
+                "warning": "지금 관리하면 10년 후가 달라집니다.",
             },
-            "jawline": {
-                "name": "🦢 턱선 / 이중턱",
-                "emoji": "🦢",
-                "image": "jawline.png",
-                "analysis": (
-                    "하안부 윤곽이 무너지고 있습니다. "
-                    "턱선이 흐려지는 건 '피부 처짐'과 '지방 축적'이 복합된 증상입니다. "
-                    "리프팅과 윤곽 시술을 병행해야 효과가 있습니다."
-                ),
-                "symptoms": "턱선 흐려짐, 이중턱, 목주름 시작",
-                "warning": (
-                    "다이어트로는 절대 해결 안 됩니다. "
-                    "하안부는 처지면 다시 안 올라옵니다."
-                ),
+            "age_40": {
+                "name": "40대",
+                "emoji": "4️⃣",
+                "image": "age_40.png",
+                "analysis": "40대는 본격적인 리프팅이 필요한 시기입니다.",
+                "symptoms": "팔자주름, 턱선 흐려짐",
+                "warning": "비수술 리프팅의 마지막 적기입니다.",
             },
-            "eye": {
-                "name": "👁️ 눈가 / 이마주름",
-                "emoji": "👁️",
-                "image": "eye.png",
-                "analysis": (
-                    "상안부 노화가 진행 중입니다. "
-                    "눈꼬리 처짐과 이마주름은 '눈썹 하수'의 신호입니다. "
-                    "보톡스만으로는 근본 해결이 안 됩니다."
-                ),
-                "symptoms": "눈꼬리 처짐, 이마주름, 눈 작아 보임",
-                "warning": (
-                    "이마 보톡스만 맞으면 눈썹이 더 처집니다. "
-                    "리프팅으로 근본 원인을 잡아야 합니다."
-                ),
+            "age_50": {
+                "name": "50대 이상",
+                "emoji": "5️⃣",
+                "image": "age_50.png",
+                "analysis": "50대 이상은 복합 시술이 효과적입니다.",
+                "symptoms": "전체적 처짐, 볼륨 손실",
+                "warning": "부분 시술보다 풀페이스가 경제적입니다.",
             },
-            "overall": {
-                "name": "✨ 전체 탄력 저하",
-                "emoji": "✨",
-                "image": "overall.png",
-                "analysis": (
-                    "전반적인 피부 탄력이 저하된 상태입니다. "
-                    "부분 시술보다 풀페이스 리프팅이 효과적입니다. "
-                    "울쎄라+써마지 병행 또는 실리프팅을 권장합니다."
-                ),
-                "symptoms": "전체적으로 처진 느낌, 피부 탄력 없음, 화장 안 받음",
-                "warning": (
-                    "부분 시술 여러 번 하면 오히려 돈만 낭비됩니다. "
-                    "한 번에 제대로 하는 게 결국 경제적입니다."
-                ),
+        },
+        "STEP_BUTTONS": {
+            "step1_age": {
+                "question": "고객님의 연령대를 선택해주세요.",
+                "buttons": ["30대", "40대", "50대 이상"],
+            },
+            "step2_concern": {
+                "question": "가장 신경 쓰이는 부위는 어디인가요?",
+                "buttons": ["턱라인 무너짐", "팔자주름", "볼패임/볼처짐"],
+            },
+            "step3_history": {
+                "question": "과거 리프팅 시술 경험이 있으신가요?",
+                "buttons": ["없음", "1년 이내", "3년 이내"],
             },
         },
     },
