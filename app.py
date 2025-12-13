@@ -480,58 +480,29 @@ if IS_ROOT:
 # Lift 모드: 단계별 버튼 UI (B2C 고객 직접 타겟)
 # ============================================
 if CLIENT_ID == "lift" and current_stage != "conversion" and current_stage != "complete":
-    STEP_BUTTONS = CFG.get("STEP_BUTTONS", {})
-    lift_step = st.session_state.get("lift_step", 1)
+    last_ai_text = chat_history[-1]["text"] if chat_history and chat_history[-1]["role"] == "ai" else ""
     
-    # 현재 단계 결정
-    if lift_step == 1:
-        step_key = "step1_age"
+    # AI 대사 키워드로 현재 단계 및 버튼 결정
+    buttons = []
+    if "연령대" in last_ai_text:
         buttons = ["30대", "40대", "50대 이상"]
-    elif lift_step == 2:
-        step_key = "step2_concern"
+    elif "신경 쓰이는 부위" in last_ai_text or "고민" in last_ai_text and "부위" in last_ai_text:
         buttons = ["턱라인 무너짐", "팔자주름", "볼패임/볼처짐"]
-    elif lift_step == 3:
-        step_key = "step3_history"
+    elif "시술 경험" in last_ai_text:
         buttons = ["없음", "1년 이내", "3년 이내"]
-    else:
-        step_key = None
-        buttons = []
     
     # 버튼 표시
-    if buttons and len(chat_history) >= 1:
+    if buttons:
         with st.container():
             st.markdown(
                 '<div style="text-align:center; color:#9CA3AF; font-size:12px; margin:8px 0;">버튼을 선택하거나, 직접 입력하셔도 됩니다</div>',
                 unsafe_allow_html=True,
             )
-            # 버튼을 HTML로 직접 렌더링 (옅은 회색 배경 + 검은 글자)
-            btn_html = '<div style="display:flex; justify-content:center; gap:10px; margin:10px 0;">'
-            for idx, btn_label in enumerate(buttons):
-                btn_html += f'''
-                <form action="" method="post" style="margin:0;">
-                    <button type="submit" name="lift_btn_{lift_step}_{idx}" 
-                        style="background:#F3F4F6; color:#1F2937; border:1px solid #E5E7EB; 
-                        padding:10px 20px; border-radius:8px; font-size:14px; cursor:pointer;
-                        transition:background 0.2s;"
-                        onmouseover="this.style.background='#E5E7EB'" 
-                        onmouseout="this.style.background='#F3F4F6'">
-                        {btn_label}
-                    </button>
-                </form>'''
-            btn_html += '</div>'
-            
-            # Streamlit 버튼 사용 (스타일은 CSS로 제어)
             cols = st.columns(3)
             for idx, btn_label in enumerate(buttons):
                 with cols[idx]:
-                    if st.button(btn_label, key=f"lift_btn_{lift_step}_{idx}", use_container_width=True):
-                        # 사용자 메시지 추가
+                    if st.button(btn_label, key=f"lift_btn_{idx}_{btn_label}", use_container_width=True):
                         conv_manager.add_message("user", btn_label)
-                        
-                        # 다음 단계로
-                        st.session_state.lift_step = lift_step + 1
-                        
-                        # AI 응답 생성
                         raw_ai = generate_ai_response(btn_label, conv_manager.get_context(), conv_manager.get_history())
                         clean_ai, new_stage, route_to = parse_response_tags(raw_ai, current_stage)
                         conv_manager.add_message("ai", clean_ai)
