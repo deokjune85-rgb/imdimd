@@ -221,7 +221,7 @@ header {{visibility: hidden;}}
 # 유틸 함수
 # ============================================
 ALLOWED_STAGES = {"initial", "symptom_explore", "sleep_check", "digestion_check", "tongue_select", "conversion", "complete"}
-ROUTE_MAP = {"hanbang": "hanbang", "gs": "gs", "nana": "nana", "law": "law"}
+ROUTE_MAP = {"hanbang": "hanbang", "gs": "gs", "nana": "nana", "law": "law", "math": "math"}
 
 
 def parse_response_tags(text: str, current_stage: str):
@@ -359,6 +359,7 @@ if IS_ROOT:
             "gs": ("👁️ 안과 AI 검안 시스템 체험하기", "가격 문의를 검안 예약으로 전환"),
             "nana": ("✨ 성형외과 AI 컨설턴트 체험하기", "환자의 워너비 스타일 파악"),
             "law": ("⚖️ 법률 AI 사건 접수 체험하기", "의뢰인의 증거와 상황 파악"),
+            "math": ("📐 수학학원 AI 상담 체험하기", "학부모의 고민과 연락처 확보"),
         }
         label, desc = demo_labels.get(pending, ("데모 보기", ""))
         st.markdown(f"<p style='text-align:center; color:#6B7280; font-size:13px;'>{desc}</p>", unsafe_allow_html=True)
@@ -369,12 +370,13 @@ if IS_ROOT:
 
     # 데모 목록 (하단에 항상 표시)
     with st.expander("📋 업종별 데모 바로가기", expanded=False):
-        demo_cols = st.columns(4)
+        demo_cols = st.columns(5)
         demos = [
             ("hanbang", "🏥 한의원", "AI 수석 실장"),
             ("gs", "👁️ 안과", "AI 검안 시스템"),
             ("nana", "✨ 성형외과", "AI 뷰티 컨설턴트"),
             ("law", "⚖️ 법률", "AI 사건 접수"),
+            ("math", "📐 수학학원", "AI 학습 상담"),
         ]
         for i, (cid, name, desc) in enumerate(demos):
             with demo_cols[i]:
@@ -389,7 +391,7 @@ if IS_ROOT:
 # ============================================
 if not IS_ROOT and TONGUE_TYPES:
     last_ai_text = chat_history[-1]["text"] if chat_history and chat_history[-1]["role"] == "ai" else ""
-    trigger_keywords = ["혀", "거울", "글씨", "시력", "스타일", "워너비", "선택", "증거", "상황", "문제"]
+    trigger_keywords = ["혀", "거울", "글씨", "시력", "스타일", "워너비", "선택", "증거", "상황", "문제", "등급", "성적", "학년"]
     show_tongue_ui = (
         current_stage == "tongue_select"
         and not selected_tongue
