@@ -688,14 +688,12 @@ if show_cta and current_stage != "complete":
 
 
 # ============================================
-# [FIXED] 입력창 + AI 응답 (시인성 긴급 패치)
+# [FIXED_FINAL] 입력창 가시성 완벽 패치 (White/Black 고정)
 # ============================================
 
-# 1. [CSS 긴급 패치] 글자색 강제 지정 & 입력창 복구
-# 이 코드가 기존의 숨김 설정을 무시하고 입력창을 다시 보여줍니다.
 st.markdown("""
 <style>
-    /* 칩 위의 안내 문구 색상 강제 지정 (진한 회색) */
+    /* 1. 칩 위의 안내 문구 (진한 회색) */
     .chip-guide {
         color: #1F2937 !important; 
         font-size: 14px !important; 
@@ -703,16 +701,40 @@ st.markdown("""
         margin-bottom: 10px !important;
         text-align: center !important;
     }
-    /* 입력창 숨김 해제 (가장 중요: !important로 강제 표시) */
+
+    /* 2. 채팅 입력창 위치 고정 및 표시 */
     .stChatInput {
         display: block !important;
-        bottom: 0px !important; /* 위치 하단 고정 */
-        background-color: white !important;
+        bottom: 0px !important;
+        background-color: transparent !important;
     }
-    /* 입력창 내부 글자색도 강제 지정 */
-    .stChatInput textarea {
-        color: #333333 !important;
-        caret-color: #333333 !important;
+
+    /* 3. [핵심] 입력창 디자인 강제 고정 (테마 무시) */
+    /* 입력창의 배경을 무조건 흰색(#FFF)으로, 글자를 검은색(#000)으로 설정 */
+    
+    div[data-testid="stChatInput"] {
+        background-color: #FFFFFF !important; /* 입력창 바 전체 흰색 */
+        border-top: 1px solid #E5E7EB !important;
+        border-radius: 15px !important; /* 둥근 모서리 */
+    }
+
+    div[data-testid="stChatInput"] textarea {
+        background-color: #FFFFFF !important;  /* 입력칸 배경 흰색 */
+        color: #000000 !important;             /* 입력 글자 완전 검정 */
+        caret-color: #000000 !important;       /* 커서 검정 */
+        -webkit-text-fill-color: #000000 !important; /* 크롬 강제 적용 */
+        border: 1px solid #E5E7EB !important;  /* 테두리 회색 */
+    }
+
+    /* 4. 안내 문구(Placeholder) 색상 */
+    div[data-testid="stChatInput"] textarea::placeholder {
+        color: #6B7280 !important; /* 연한 회색 */
+        -webkit-text-fill-color: #6B7280 !important;
+    }
+    
+    /* 5. 전송 버튼 아이콘 색상 */
+    div[data-testid="stChatInput"] button {
+        color: #000000 !important;
     }
 </style>
 """, unsafe_allow_html=True)
