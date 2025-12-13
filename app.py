@@ -341,6 +341,7 @@ if "app_initialized" not in st.session_state or st.session_state.get("current_cl
     st.session_state.pending_route = None
     st.session_state.analysis_shown = False
     st.session_state.math_case_study = None
+    st.session_state.lift_step = 1
 
 conv_manager.update_context("client_id", CLIENT_ID)
 
@@ -460,6 +461,52 @@ if IS_ROOT:
                     st.query_params["client"] = cid
                     st.rerun()
                 st.caption(desc)
+
+
+# ============================================
+# Lift 모드: 단계별 버튼 UI (B2C 고객 직접 타겟)
+# ============================================
+if CLIENT_ID == "lift" and current_stage != "conversion" and current_stage != "complete":
+    STEP_BUTTONS = CFG.get("STEP_BUTTONS", {})
+    lift_step = st.session_state.get("lift_step", 1)
+    
+    # 현재 단계 결정
+    if lift_step == 1:
+        step_key = "step1_age"
+        buttons = ["30대", "40대", "50대 이상"]
+    elif lift_step == 2:
+        step_key = "step2_concern"
+        buttons = ["턱라인 무너짐", "팔자주름", "볼패임/볼처짐"]
+    elif lift_step == 3:
+        step_key = "step3_history"
+        buttons = ["없음", "1년 이내", "3년 이내"]
+    else:
+        step_key = None
+        buttons = []
+    
+    # 버튼 표시
+    if buttons and len(chat_history) >= 1:
+        with st.container():
+            st.markdown(
+                f'<div style="text-align:center; color:#6B7280; font-size:13px; margin:8px 0;">버튼을 선택하거나, 직접 입력하셔도 됩니다</div>',
+                unsafe_allow_html=True,
+            )
+            cols = st.columns(3)
+            for idx, btn_label in enumerate(buttons):
+                with cols[idx]:
+                    if st.button(btn_label, key=f"lift_btn_{lift_step}_{idx}", use_container_width=True):
+                        # 사용자 메시지 추가
+                        conv_manager.add_message("user", btn_label)
+                        
+                        # 다음 단계로
+                        st.session_state.lift_step = lift_step + 1
+                        
+                        # AI 응답 생성
+                        raw_ai = generate_ai_response(btn_label, conv_manager.get_context(), conv_manager.get_history())
+                        clean_ai, new_stage, route_to = parse_response_tags(raw_ai, current_stage)
+                        conv_manager.add_message("ai", clean_ai)
+                        conv_manager.update_stage(new_stage)
+                        st.rerun()
 
 
 # ============================================
@@ -681,26 +728,57 @@ if show_cta and current_stage != "complete":
         )
         
         with st.form("consulting_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                clinic_name = st.text_input(CFG["FORM_LABEL_1"], placeholder=CFG["FORM_PLACEHOLDER_1"])
-            with col2:
-                director_name = st.text_input(CFG["FORM_LABEL_2"], placeholder=CFG["FORM_PLACEHOLDER_2"])
-            contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
-            submitted = st.form_submit_button(CFG["FORM_BUTTON"], use_container_width=True)
-            
-            if submitted:
-                if not clinic_name or not director_name or not contact:
-                    st.error("필수 정보를 모두 입력해주세요.")
-                else:
-                    lead_data = {
-                        "name": director_name,
-                        "contact": contact,
-                        "symptom": f"회사/병원명: {clinic_name}",
-                        "preferred_date": "즉시 상담 희망",
-                        "chat_summary": conv_manager.get_summary(),
-                        "source": CFG["APP_TITLE"],
-                        "type": CFG["APP_TITLE"],
+            # lift는 B2C이므로 성함/연락처만 받음
+            if CLIENT_ID == "lift":
+                customer_name = st.text_input(CFG["FORM_LABEL_1"], placeholder=CFG["FORM_PLACEHOLDER_1"])
+                contact = st.text_input(CFG["FORM_LABEL_2"], placeholder=CFG["FORM_PLACEHOLDER_2"])
+                submitted = st.form_submit_button(CFG["FORM_BUTTON"], use_container_width=True)
+                
+                if submitted:
+                    if not customer_name or not contact:
+                        st.error("필수 정보를 모두 입력해주세요.")
+                    else:
+                        # lift용 리드 데이터
+                        lead_data = {
+                            "name": customer_name,
+                            "contact": contact,
+                            "symptom": f"연령대: {st.session_state.get('lift_age', '미입력')} / 고민: {st.session_state.get('lift_concern', '미입력')} / 시술경험: {st.session_state.get('lift_history', '미입력')}",
+                            "preferred_date": "즉시 상담 희망",
+                            "chat_summary": conv_manager.get_summary(),
+                            "source": CFG["APP_TITLE"],
+                            "type": "피부과 리프팅",
+                        }
+                        success = save_lead(lead_data)
+                        if success:
+                            conv_manager.update_stage("complete")
+                            conv_manager.add_message("ai", "신청이 완료되었습니다. 전문 분석가가 곧 연락드리겠습니다. 감사합니다.")
+                            st.success("✅ 신청되었습니다! 전문 분석가가 곧 연락드립니다.")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("저장 중 오류가 발생했습니다. 다시 시도해주세요.")
+            else:
+                # 기존 B2B 폼 (병원명/원장명/연락처)
+                col1, col2 = st.columns(2)
+                with col1:
+                    clinic_name = st.text_input(CFG["FORM_LABEL_1"], placeholder=CFG["FORM_PLACEHOLDER_1"])
+                with col2:
+                    director_name = st.text_input(CFG["FORM_LABEL_2"], placeholder=CFG["FORM_PLACEHOLDER_2"])
+                contact = st.text_input("연락처 (직통)", placeholder="010-1234-5678")
+                submitted = st.form_submit_button(CFG["FORM_BUTTON"], use_container_width=True)
+                
+                if submitted:
+                    if not clinic_name or not director_name or not contact:
+                        st.error("필수 정보를 모두 입력해주세요.")
+                    else:
+                        lead_data = {
+                            "name": director_name,
+                            "contact": contact,
+                            "symptom": f"회사/병원명: {clinic_name}",
+                            "preferred_date": "즉시 상담 희망",
+                            "chat_summary": conv_manager.get_summary(),
+                            "source": CFG["APP_TITLE"],
+                            "type": CFG["APP_TITLE"],
                     }
                     success, message = lead_handler.save_lead(lead_data)
                     if success:
@@ -779,13 +857,30 @@ if conv_manager.get_context().get("stage") == "complete":
                 st.markdown(html_escape(conv_manager.get_summary()), unsafe_allow_html=True)
 
 # ============================================
-# 푸터
+# 푸터 - B2B 마케팅용 하단 배너 (클릭 시 제작사 홈페이지 이동)
 # ============================================
+footer_url = CFG.get("FOOTER_URL", "https://www.converdream.co.kr")
+st.markdown("---")
 st.markdown(
     f"""
-<div class="footer">
-    <b>{CFG["FOOTER_TITLE"]}</b><br>
-    {CFG["FOOTER_SUB"]}
+<div style="
+    text-align: center; 
+    font-size: 12px; 
+    color: #888; 
+    margin-top: 20px;
+    margin-bottom: 100px;
+    padding: 20px; 
+    background-color: #f9f9f9; 
+    border-radius: 10px;
+    cursor: pointer;"
+    onclick="window.open('{footer_url}', '_blank')">
+    
+    <a href="{footer_url}" target="_blank" style="text-decoration: none; color: #444;">
+        <strong>{CFG["FOOTER_TITLE"]}</strong><br>
+        <span style="font-size: 11px; color: #666;">
+            {CFG["FOOTER_SUB"]}
+        </span>
+    </a>
 </div>
 """,
     unsafe_allow_html=True,
