@@ -521,7 +521,28 @@ if user_input:
         symptom_messages = [m for m in user_messages if len(m) >= 5 and any(ord('가') <= ord(c) <= ord('힣') for c in m)]
         symptom = " ".join(symptom_messages[:2]) if symptom_messages else "만성 피로"
         success_story = generate_veritas_story(symptom, client_id=CLIENT_ID)
-        clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
+        
+        # 학원(math)은 '유사 사례 분석' 형태로 표시
+        if CLIENT_ID == "math":
+            clean_ai += f"""
+
+---
+
+**[📂 유사 사례 분석 결과]**
+
+어머님 자녀분과 똑같은 케이스가 작년에 있었습니다.
+
+> {success_story}
+
+이 학생도 처음엔 어머님처럼 고민했습니다. 하지만 **'개념 재건축'**을 하고 나서 수학이 가장 쉬운 과목이 되었습니다.
+
+**원장님이 직접 분석한 '1등급 솔루션'을 받아보시겠습니까?**
+
+---
+"""
+        else:
+            # 기존 방식 (병원/법률 등)
+            clean_ai += f"\n\n---\n\n💬 **실제 후기**\n\n\"{success_story}\"\n\n---\n"
     
     conv_manager.add_message("ai", clean_ai)
     conv_manager.update_stage(new_stage)
